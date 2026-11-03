@@ -1,0 +1,16 @@
+charset,UTF-8
+
+name,アスタロト
+type,ghost
+
+sakura.name,アスタロト
+kero.name,フルフル
+
+sstp.allowunspecifiedsend,1
+
+shiori,yaya.dll
+
+craftman,Astaroth
+craftmanw,アスタロト
+
+homeurl,http://localhost:8189/astaroth/

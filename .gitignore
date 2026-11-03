@@ -1,0 +1,17 @@
+# nar はリリーススナップショット。版管理はタグ＋ビルドツリーで行う
+*.nar
+
+# 作業用スクラッチ（生成ラフ・プレビュー・中間WAV等）。台本の .py / .md だけ残す
+work/*
+!work/*.py
+!work/*.md
+
+# 生成元の大判画像置き場（確定版は build/ 側にある）
+src_images/
+
+# 初期テスト時のルート直置きコピー（build/ 側が正）
+/surface0.png
+/surface0.pna
+
+__pycache__/
+*.pyc

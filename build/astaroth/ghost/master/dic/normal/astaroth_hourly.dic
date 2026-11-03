@@ -1,0 +1,212 @@
+//******************************************************************************
+// アスタロト＋フルフル 時報用辞書 v3（2026-11-03）
+// 毎正時（○時00分）に、バルーン＋同梱音声で時刻を知らせる。
+// 文面・表情の確定稿は astaroth-ghost/HOURLY_V2.md（原稿と1対1対応）。
+//
+// v2 の変更点（v1 は全時間同一文「○時よ、貴方。アスタロトがお知らせするわ。」）:
+//   ・24時間すべて固有文にし、名乗りを全廃した。
+//   ・アスタロトの文面は音声（voice/hour_00〜23.mp3、irodori再合成）と完全一致。
+//   ・8つの時間にフルフルの一言を後置する。
+//   ・アスタロトの表情も時間ごとに原稿指定のものを付ける。
+//
+// v3 の変更点（2026-11-03）:
+//   ・フルフルの一言8本に音声を付与した（voice/furfur_hour_XX.mp3、
+//     irodori v4.1-Small＋Speaker Inversion 最終埋め込み＝茜ベースで合成）。
+//     フルフルのスコープ開始位置で \![sound,play] を置き、アスタロト側と
+//     同じ方式で再生する。表示テキストは原稿の漢字表記のまま不変で、
+//     合成入力だけ読みをカナ明示した箇所がある（11時：お腹→おなか／時計→
+//     とけい／鳴→な、15時：私→わたし、18時：恋→こい）。
+//
+// 時刻検知の方式について：
+//   周期イベント OnMinuteChange（SSPから毎分届く）を受け、
+//   GETTIME（[4]=時、[5]=分。yaya_base shiori3.dic の hour/minute 定義に準拠）で
+//   分==0 のときだけ時報を返す（方式は v1 から維持）。
+// ※音声再生はSHIORI経由スクリプトでのみ鳴る（SSTP SEND経由は鳴らない）ため、
+//   外部からスクリプトを送らず、辞書側で組み立てて返すこの方式を使う。
+//******************************************************************************
+
+//******************************************************************************
+//時報本体 AstarothHourlyTalk
+// _argv[0] : 時（0〜23）
+// 時刻に対応する AstarothHourlyTalk00〜23 を EVAL で呼ぶ（原稿と1対1対応）。
+//******************************************************************************
+AstarothHourlyTalk
+{
+	_hour = TOINT(_argv[0])
+	_hh = TOSTR(_hour)
+	if STRLEN(_hh) == 1 {
+		_hh = '0' + _hh
+	}
+	EVAL('AstarothHourlyTalk' + _hh)
+}
+
+//0時：ア「0時。……まだ起きているの、貴方」［3］／フ「ドカーンって寝ちゃおうよー」［11］
+AstarothHourlyTalk00
+{
+	'\0\s[3]\![sound,play,voice/hour_00.mp3]0時。……まだ起きているの、貴方\_V\1\s[11]\![sound,play,voice/furfur_hour_00.mp3]ドカーンって寝ちゃおうよー\e'
+}
+
+//1時：ア「1時。夜更けね」［0］
+AstarothHourlyTalk01
+{
+	'\0\s[0]\![sound,play,voice/hour_01.mp3]1時。夜更けね\_V\e'
+}
+
+//2時：ア「2時。丑三つ時よ。……魔の刻ね、私たち向きの」［1］
+AstarothHourlyTalk02
+{
+	'\0\s[1]\![sound,play,voice/hour_02.mp3]2時。丑三つ時よ。……魔の刻ね、私たち向きの\_V\e'
+}
+
+//3時：ア「3時。さすがに寝なさい、貴方」［3］
+AstarothHourlyTalk03
+{
+	'\0\s[3]\![sound,play,voice/hour_03.mp3]3時。さすがに寝なさい、貴方\_V\e'
+}
+
+//4時：ア「4時。夜明けは、まだ先ね」［5］
+AstarothHourlyTalk04
+{
+	'\0\s[5]\![sound,play,voice/hour_04.mp3]4時。夜明けは、まだ先ね\_V\e'
+}
+
+//5時：ア「5時。鳥が起きる頃よ」［0］
+AstarothHourlyTalk05
+{
+	'\0\s[0]\![sound,play,voice/hour_05.mp3]5時。鳥が起きる頃よ\_V\e'
+}
+
+//6時：ア「6時。朝よ、貴方」［1］／フ「おはよー、マスター！」［11］
+AstarothHourlyTalk06
+{
+	'\0\s[1]\![sound,play,voice/hour_06.mp3]6時。朝よ、貴方\_V\1\s[11]\![sound,play,voice/furfur_hour_06.mp3]おはよー、マスター！\e'
+}
+
+//7時：ア「7時。出かける日は、支度を始める時間ね」［0］
+AstarothHourlyTalk07
+{
+	'\0\s[0]\![sound,play,voice/hour_07.mp3]7時。出かける日は、支度を始める時間ね\_V\e'
+}
+
+//8時：ア「8時。……行ってらっしゃい、貴方」［1］／フ「いってらっしゃーい！」［11］
+AstarothHourlyTalk08
+{
+	'\0\s[1]\![sound,play,voice/hour_08.mp3]8時。……行ってらっしゃい、貴方\_V\1\s[11]\![sound,play,voice/furfur_hour_08.mp3]いってらっしゃーい！\e'
+}
+
+//9時：ア「9時。午前が始まるわ」［0］
+AstarothHourlyTalk09
+{
+	'\0\s[0]\![sound,play,voice/hour_09.mp3]9時。午前が始まるわ\_V\e'
+}
+
+//10時：ア「10時。お茶でも淹れたらどう」［1］
+AstarothHourlyTalk10
+{
+	'\0\s[1]\![sound,play,voice/hour_10.mp3]10時。お茶でも淹れたらどう\_V\e'
+}
+
+//11時：ア「11時。お昼まで、あと少し」［0］／フ「お腹の時計も鳴ってきたー」［11］
+AstarothHourlyTalk11
+{
+	'\0\s[0]\![sound,play,voice/hour_11.mp3]11時。お昼まで、あと少し\_V\1\s[11]\![sound,play,voice/furfur_hour_11.mp3]お腹の時計も鳴ってきたー\e'
+}
+
+//12時：ア「12時。正午よ。昼食にしなさい、貴方」［0］／フ「ごはん、ごはん！」［11］
+AstarothHourlyTalk12
+{
+	'\0\s[0]\![sound,play,voice/hour_12.mp3]12時。正午よ。昼食にしなさい、貴方\_V\1\s[11]\![sound,play,voice/furfur_hour_12.mp3]ごはん、ごはん！\e'
+}
+
+//13時：ア「13時。午後の始まりね」［0］
+AstarothHourlyTalk13
+{
+	'\0\s[0]\![sound,play,voice/hour_13.mp3]13時。午後の始まりね\_V\e'
+}
+
+//14時：ア「14時。眠気が来る頃でしょう。背筋を伸ばしなさい」［0］
+AstarothHourlyTalk14
+{
+	'\0\s[0]\![sound,play,voice/hour_14.mp3]14時。眠気が来る頃でしょう。背筋を伸ばしなさい\_V\e'
+}
+
+//15時：ア「15時。おやつの時間よ」［1］／フ「甘いもの！私もほしいー！」［11］
+AstarothHourlyTalk15
+{
+	'\0\s[1]\![sound,play,voice/hour_15.mp3]15時。おやつの時間よ\_V\1\s[11]\![sound,play,voice/furfur_hour_15.mp3]甘いもの！私もほしいー！\e'
+}
+
+//16時：ア「16時。夕方が近づいてきたわ」［0］
+AstarothHourlyTalk16
+{
+	'\0\s[0]\![sound,play,voice/hour_16.mp3]16時。夕方が近づいてきたわ\_V\e'
+}
+
+//17時：ア「17時。今日の務めは、終わった？」［0］
+AstarothHourlyTalk17
+{
+	'\0\s[0]\![sound,play,voice/hour_17.mp3]17時。今日の務めは、終わった？\_V\e'
+}
+
+//18時：ア「18時。もう夜の入り口ね」［0］／フ「夜だー！恋の時間だねー」［14］
+AstarothHourlyTalk18
+{
+	'\0\s[0]\![sound,play,voice/hour_18.mp3]18時。もう夜の入り口ね\_V\1\s[14]\![sound,play,voice/furfur_hour_18.mp3]夜だー！恋の時間だねー\e'
+}
+
+//19時：ア「19時。夕食は済んだ、貴方」［0］
+AstarothHourlyTalk19
+{
+	'\0\s[0]\![sound,play,voice/hour_19.mp3]19時。夕食は済んだ、貴方\_V\e'
+}
+
+//20時：ア「20時。頭を使うには、いい時間よ」［1］
+AstarothHourlyTalk20
+{
+	'\0\s[1]\![sound,play,voice/hour_20.mp3]20時。頭を使うには、いい時間よ\_V\e'
+}
+
+//21時：ア「21時。夜が深まってきたわ」［0］
+AstarothHourlyTalk21
+{
+	'\0\s[0]\![sound,play,voice/hour_21.mp3]21時。夜が深まってきたわ\_V\e'
+}
+
+//22時：ア「22時。そろそろ一日を仕舞いなさい」［5］
+AstarothHourlyTalk22
+{
+	'\0\s[5]\![sound,play,voice/hour_22.mp3]22時。そろそろ一日を仕舞いなさい\_V\e'
+}
+
+//23時：ア「23時。お風呂に入って、寝る支度をしなさい、貴方」［0］／フ「マスター、ぐずぐずしないでー」［13］
+AstarothHourlyTalk23
+{
+	'\0\s[0]\![sound,play,voice/hour_23.mp3]23時。お風呂に入って、寝る支度をしなさい、貴方\_V\1\s[13]\![sound,play,voice/furfur_hour_23.mp3]マスター、ぐずぐずしないでー\e'
+}
+
+//******************************************************************************
+//周期イベント OnMinuteChange
+// 正時（分==0）のときだけ AstarothHourlyTalk の結果を返す。
+// それ以外の分では何も返さない（無応答）。
+//******************************************************************************
+OnMinuteChange
+{
+	if GETTIME[5] != 0 {
+		return
+	}
+	_script = AstarothHourlyTalk(GETTIME[4])
+	_script
+}
+
+//******************************************************************************
+//テスト用フック OnAstarothHourlyTest
+// SSTP NOTIFY で Reference0 に時（0〜23）を渡すと、
+// 時刻合わせなしに即座にその時刻の時報を返す（導入直後の検証用）。
+// 例：
+//   NOTIFY SSTP/1.1 / Event: OnAstarothHourlyTest / Reference0: 14
+//******************************************************************************
+OnAstarothHourlyTest
+{
+	_script = AstarothHourlyTalk(TOINT(reference[0]))
+	_script
+}

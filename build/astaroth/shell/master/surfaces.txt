@@ -1,0 +1,201 @@
+charset,UTF-8
+
+descript
+{
+version,1
+}
+
+// surface0: アスタロト通常立ち絵
+// 座標は各 surface*.png（全て 478x1216）基準。
+// surface1〜5 は surface0 と同系シードで生成し、顔位置・サイズを
+// 揃えてあるため、当たり判定は surface0 と同じ座標を流用する。
+surface0
+{
+collision0,150,60,320,255,Head
+collision1,170,140,300,250,Face
+collision2,110,360,360,480,Bust
+}
+
+// surface1: 笑顔
+surface1
+{
+collision0,150,60,320,255,Head
+collision1,170,140,300,250,Face
+collision2,110,360,360,480,Bust
+}
+
+// surface2: 驚き
+surface2
+{
+collision0,150,60,320,255,Head
+collision1,170,140,300,250,Face
+collision2,110,360,360,480,Bust
+}
+
+// surface3: 呆れ・不機嫌
+surface3
+{
+collision0,150,60,320,255,Head
+collision1,170,140,300,250,Face
+collision2,110,360,360,480,Bust
+}
+
+// surface4: 照れ
+surface4
+{
+collision0,150,60,320,255,Head
+collision1,170,140,300,250,Face
+collision2,110,360,360,480,Bust
+}
+
+// surface5: 目閉じ
+surface5
+{
+collision0,150,60,320,255,Head
+collision1,170,140,300,250,Face
+collision2,110,360,360,480,Bust
+}
+
+// surface6〜9: アスタロト ポーズ差分（第一弾、2026-11-03）。
+// 当たり判定はポーズごとに実画像（暗背景プレビュー＋50pxグリッド）から実測した。
+// 顔位置がポーズごとにずれるため surface0 の座標は流用していない。
+// surface6: 手を重ねる（素直な立ち、630x1216。裾のトレーン分だけ幅が広い）
+surface6
+{
+collision0,190,78,368,282,Head
+collision1,205,148,345,278,Face
+collision2,185,385,450,505,Bust
+}
+
+// surface7: 手を合わせ俯く（斜め横向き、478x1216。顔は左寄り・低め）
+surface7
+{
+collision0,92,82,292,338,Head
+collision1,112,200,268,332,Face
+collision2,65,437,325,557,Bust
+}
+
+// surface8: 本を抱える（478x1216）
+surface8
+{
+collision0,132,70,318,268,Head
+collision1,152,148,298,262,Face
+collision2,125,365,340,490,Bust
+}
+
+// surface9: 腕組み（478x1216。基調は軽い見下し顔）
+surface9
+{
+collision0,126,76,324,262,Head
+collision1,146,182,304,256,Face
+collision2,110,361,375,481,Bust
+}
+
+// surface10〜15: フルフル（相方）。全て 835x1216、採用シードは全て 1031。
+// 当たり判定は surface10 の実画像からの実測に基づく
+// （頭部 solid x:266..578、顔の肌色クラスタ x:302..526、頭頂 y:52、
+//  胸部行 x:285..548）。表情間で頭位置が最大 ±20px 程度ずれるため、
+//  判定枠は実測に余裕を持たせてある。全表情で同じ座標を使う。
+// surface10: フルフル通常
+surface10
+{
+collision0,260,45,585,360,Head
+collision1,315,150,520,350,Face
+collision2,290,400,550,540,Bust
+}
+
+// surface11: フルフル笑顔（満面）
+surface11
+{
+collision0,260,45,585,360,Head
+collision1,315,150,520,350,Face
+collision2,290,400,550,540,Bust
+}
+
+// surface12: フルフル驚き
+surface12
+{
+collision0,260,45,585,360,Head
+collision1,315,150,520,350,Face
+collision2,290,400,550,540,Bust
+}
+
+// surface13: フルフル拗ね・不機嫌
+surface13
+{
+collision0,260,45,585,360,Head
+collision1,315,150,520,350,Face
+collision2,290,400,550,540,Bust
+}
+
+// surface14: フルフル照れ・恋
+surface14
+{
+collision0,260,45,585,360,Head
+collision1,315,150,520,350,Face
+collision2,290,400,550,540,Bust
+}
+
+// surface15: フルフル目閉じ
+surface15
+{
+collision0,260,45,585,360,Head
+collision1,315,150,520,350,Face
+collision2,290,400,550,540,Bust
+}
+
+// surface46〜49: アスタロト ポーズ差分の表情違い（基番＋40 の帯）。
+// 当たり判定は各画像からの実測（基番ポーズと構図が近いが、顔位置は個別に測り直した）。
+// surface46: 手を重ねる＋笑顔（478x1216）
+surface46
+{
+collision0,140,80,300,264,Head
+collision1,160,156,280,258,Face
+collision2,120,363,375,483,Bust
+}
+
+// surface47: 手を合わせ俯く＋目閉じ（478x1216。深く俯くため顔は低く左寄り）
+surface47
+{
+collision0,105,98,262,304,Head
+collision1,130,182,240,298,Face
+collision2,85,403,330,523,Bust
+}
+
+// surface48: 本を抱える＋笑顔（496x1216）
+surface48
+{
+collision0,152,72,324,254,Head
+collision1,172,146,304,248,Face
+collision2,130,353,360,473,Bust
+}
+
+// surface49: 腕組み＋通常（穏やかな顔、478x1216）
+surface49
+{
+collision0,130,78,315,258,Head
+collision1,150,160,295,252,Face
+collision2,115,357,370,477,Bust
+}
+
+// サーフェス番号の予約:
+//   0 = 通常（実装済み）
+//   1 = 笑顔（実装済み）
+//   2 = 驚き（実装済み）
+//   3 = 呆れ・不機嫌（実装済み）
+//   4 = 照れ（実装済み）
+//   5 = 目閉じ（実装済み）
+//   6 = ポーズ・手を重ねる（実装済み）
+//   7 = ポーズ・手を合わせ俯く（実装済み）
+//   8 = ポーズ・本を抱える（実装済み）
+//   9 = ポーズ・腕組み（実装済み）
+//   46〜49 = ポーズの表情違い（6=笑顔/7=目閉じ/8=笑顔/9=通常。実装済み）
+//   10 = フルフル通常（実装済み）
+//   11 = フルフル笑顔（実装済み）
+//   12 = フルフル驚き（実装済み）
+//   13 = フルフル拗ね・不機嫌（実装済み）
+//   14 = フルフル照れ・恋（実装済み）
+//   15 = フルフル目閉じ（実装済み）
+//   16以降 = フルフル側のポーズ差分（未実装）
+// 将来、髪留めや服装の異なるフルフルは別シェル（shell/ 以下に別フォルダ）
+// として追加し、切り替えて使う想定（基本シェルの姿は seed1031 で固定）。
