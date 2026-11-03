@@ -289,3 +289,32 @@
 - **nar**：v2.14 として再ビルド（`zip -D`、127エントリ＝v2.13 の123＋新 surface 4）。`astaroth.nar` 差し替え＋ `astaroth_v2.14_backup.nar` 保存、いずれも 21,708,089 bytes。zip 読み戻し検証済み（testzip 正常、追加・変更6ファイルの MD5 がビルドツリーと一致、削除0）。
 - **git**：コミット 0abfd57＋タグ v2.14 を push 済み。
 - **実機確認（後日、ユーザー側）**：コンタクトシート（work/sitting_pose_preview.png）での見た目確認と、夜帯のランダムトークで座りポーズが出た際の当たり判定・バルーン位置・接地位置の確認。21 の髪の星型が気になる場合は差し替えで対応する。
+
+## 追記15: シェル拡充バッチ3（最終便）：不在看板5枚＋状態管理＋自動立て替え（2026-11-03 夜、nar v2.15）
+
+原稿 SHELL_EXPANSION.md §3 と GHOST_RESEARCH.md §6.4 の推奨構成に基づく不在看板（26〜30）。バッチ1・2と同じくユーザーの委任（「手が空いているときに進め、まとめて後で確認」）で実施した。確認用コンタクトシートは work/sign_preview.png。
+
+- **看板 surface（5枚、全て 478×1216）**：土台は共通の木製立て看板。文字なしの看板だけを ComfyUI で生成（work/gen_sign.py、CottonAnima base1、832×1216、30step/CFG4/er_sde、緑背景、3シードから seed26101 を採用＝影なし・無地でキーイング適性が最良）。キーイングは finalize_expr.py と同一方式（work/finalize_sign.py）で、高さ1000pxにスケールし下端を既存シェルの接地ライン y=1211 に配置。**文字は AI に描かせず、板の矩形（実測 53,254〜423,1016）へ PIL で後入れ**した（Noto Serif CJK Bold、濃茶、タイトルは板幅に自動調整、サブは1行）。
+  - 26 入浴中／「覗くと業火で丸焼きよ」
+  - 27 外出中／「留守は任せなさい」
+  - 28 勉強中／「邪魔をすると祟るわよ」
+  - 29 就寝中／「夢の中では静かにね」
+  - 30 お留守番中（フルフル版）／「早く帰ってきてねー！」
+  - surfaces.txt には板部分のみの当たり判定（collision0,53,254,423,1016,Sign）を全看板共通で登録。予約コメントに 26〜30 の実装済みと、3000番台＝パーツ帯予約（GHOST_RESEARCH §6.1）を追記。全枚で .pna＝アルファ完全一致・四隅 alpha=0 を検証。
+- **辞書（新規 astaroth_signboard.dic、_loading_order.txt に正書式で登録）**：状態変数 `astaroth_signboard`（0／26〜30、YAYA の保存対象なので SSP 終了後も残る）で一元管理する。
+  - `OnAstarothSignboard`（SSTP NOTIFY フック、Reference0=番号／0=しまう／他は無視）→ SignboardSet／SignboardClear。立て替え時は「一言→看板表示＋フルフル非表示（\1\s[-1]）」の順で返し、しまう時は種別ごとの復帰トーク（SignboardReturnTalk、TalkReturn 規約）を返す。
+  - `OnSurfaceRestore`：看板中なら看板 surface とフルフル非表示を無言で再適用（S the Skeleton の就寝モード再適用と同型）。看板なしでは空を返す。
+  - ランダムトーク差し替え：astaroth_talk.dic の RandomTalk 入口にゲートを追加し、看板中は通常選出（履歴処理を含む従来本体は else 側に無変更で温存）ではなく SignboardMutter（種別ごとに2本の呟きプールへ振り分け）を返すようにした。
+  - 起動時吸収：astaroth_bootend.dic の OnBoot で SignboardBootCheck を先に呼び、看板状態が残っていれば復帰トークを返して通常起動トークを置き換える（空なら従来どおり OnBootTalk）。
+  - 規律：新規関数の呼び出し結果は全て代入文で受け、裸の呼び出し文なし。全辞書の波括弧バランスと新規関数名の重複なしを確認。
+- **自動立て替え（WSL systemd timer）**：送信スクリプト ~/sstp_signboard.py（引数=番号、sstp_updaterequest.py と同型）を新設し、timer 2本を設置・有効化した。
+  - astaroth-signboard-bath.timer：毎日 23:00 → 看板26（入浴中）
+  - astaroth-signboard-sleep.timer：毎日 23:25 → 看板29（就寝中）
+  - サービス実地起動でも発火を確認（journal に NOTIFY と応答スクリプト）。
+  - **割り切り**：ユーザーは 8 時に PC を落として出発し、就寝時に PC をスリープさせるため、PC が落ちている時刻の自動切替は成立しない。27（外出中）は自動化せず、手動スクリプト（`python3 ~/sstp_signboard.py 27`、しまうは `0`）での運用とする。朝の復帰はタイマーではなく OnBoot の吸収（看板が残っていれば復帰トークで通常表示に戻る）で受ける。28（勉強中）・30（お留守番）も手動専用。
+  - カスタムメニュー（右クリックからの立て替え）は今回見送り。標準メニューしかない現行構成に OnSakuraMenu を足すとメニュー全体の置き換えになり影響が大きいためで、手動経路は SSTP スクリプトで代替できている。将来 astaroth_menu.dic を作る際の第一候補とする。
+- **検証（合成テスト、SSP 実機・全て想定どおり）**：立て替え（26〜30 の5種全てで立て替え一言＋末尾の看板切替タグを確認）／看板中の OnSurfaceRestore→再適用スクリプト／看板中の talktest→呟き（\s[26] の台詞）／しまう（0）→種別ごとの復帰トーク／解除後の talktest→通常トーク／29 を立てた状態での OnBoot→復帰トーク（おはよう）で吸収し以後は通常トーク／看板なしでの OnSurfaceRestore→無応答。異常（204 の誤発・辞書読み込み失敗）はゼロ。
+- **配信**：2段階で実施し、各段階で取得ログと talktest=200 を確認した。(1) シェル11ファイル（新 surface 10件＋surfaces.txt）、updates2.dau は137レコード。(2) 辞書4ファイル（astaroth_signboard.dic 新規＋_loading_order.txt＋astaroth_talk.dic＋astaroth_bootend.dic）、同138レコード。全ファイル MD5 一致。
+- **nar**：v2.15 として再ビルド（`zip -D`、138エントリ＝v2.14 の127＋新 surface 10＋新辞書1）。`astaroth.nar` 差し替え＋ `astaroth_v2.15_backup.nar` 保存、いずれも 22,586,061 bytes。zip 読み戻し検証済み（testzip 正常、主要7ファイルの MD5 がビルドツリーと一致、_loading_order.txt の書式違反0）。
+- **git**：コミット＋タグ v2.15 を push する（本追記の記録コミットとともに行う）。
+- **実機確認（後日、ユーザー側）**：コンタクトシート（work/sign_preview.png）での見た目確認と、23:00／23:25 の自動立て替えの実地確認（今夜から発火する）。文面・台詞は全て astaroth_signboard.dic と finalize_sign.py の SIGNS 表に集約してあり、差し替えは該当箇所の書き換えだけで可能。

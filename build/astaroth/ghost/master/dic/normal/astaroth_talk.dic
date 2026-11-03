@@ -67,16 +67,27 @@ OnFurfurTalkTest
 RandomTalk
 {
 	_talk = ''
-	_done = 0
-	_count = 0
-	while _done == 0 && _count < 12 {
-		_talk = TalkSelectOne
-		_count += 1
-		if TalkInHistory(_talk) == 0 {
-			_done = 1
-		}
+	_sign = 0
+	if ISVAR('astaroth_signboard') {
+		_sign = TOINT(astaroth_signboard)
 	}
-	TalkPushHistory(_talk)
+	if _sign != 0 {
+		//看板表示中は通常トークを止め、看板越しの呟きに差し替える
+		//（astaroth_signboard.dic の SignboardMutter。状態変数はそちらで管理）
+		_talk = SignboardMutter
+	}
+	else {
+		_done = 0
+		_count = 0
+		while _done == 0 && _count < 12 {
+			_talk = TalkSelectOne
+			_count += 1
+			if TalkInHistory(_talk) == 0 {
+				_done = 1
+			}
+		}
+		TalkPushHistory(_talk)
+	}
 	_talk
 }
 

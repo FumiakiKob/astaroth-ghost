@@ -22,7 +22,13 @@ OnFirstBoot
 OnBoot
 {
 	aitalkinterval = 420
-	OnBootTalk
+	//看板状態が残っていたら復帰トークで吸収する（astaroth_signboard.dic）。
+	//看板が無ければ空が返り、通常の起動トークに進む。
+	_script = SignboardBootCheck
+	if _script == '' {
+		_script = OnBootTalk
+	}
+	_script
 }
 
 OnBootTalk : nonoverlap
