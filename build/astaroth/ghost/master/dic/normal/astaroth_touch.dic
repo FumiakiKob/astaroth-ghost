@@ -1,0 +1,522 @@
+//******************************************************************************
+// つつき・撫で反応（2026-11-04、ユーザー指示で新規実装。原稿チェック不要の委任）
+// それまでマウス系イベントの受け口が無く、つついても撫でても無反応だった
+// ための追加。音声は付けない（ランダムトークと同方針）。
+//
+// 仕様（UKADOC「SHIORI Event リスト」で裏取り済み、2026-11-04）:
+//   OnMouseDoubleClick（左・右ボタンでダブルクリックされた際に発生）:
+//     Reference0 = カーソル x 座標（ローカル）
+//     Reference1 = カーソル y 座標（ローカル）
+//     Reference2 = 常に0
+//     Reference3 = 本体の場合は0、相方の場合は1（対象スコープ）
+//     Reference4 = 当たり判定の識別子（本ゴーストでは Head／Face／Bust／Sign）
+//     Reference5 = 左クリックは0、右クリックは1
+//   OnMouseMove（マウスが移動した際に発生）:
+//     Reference0 = x / Reference1 = y / Reference2 = ホイール回転量
+//     Reference3 = スコープ（同上）/ Reference4 = 当たり判定の識別子
+//   当たり判定名は shell/master/surfaces.txt の登録名と一致させる。
+//
+// 設計:
+//   ・つつき: OnMouseDoubleClick（左ボタン＝Reference5 が 0 のときだけ）。
+//     部位（Head／Face／Bust／その他）×対象（\0 アスタロト／\1 フルフル）
+//     で反応を分ける。クールダウンは対象ごとに5秒。
+//   ・撫で: OnMouseMove で、対象の Head 上でのポインタの往復を検出する。
+//     片道12px以上の移動を1区間とし、向きの反転が3秒以内に3回に達したら
+//     発火する。クールダウンは対象ごとに20秒。
+//     撫でた回数（対象ごとの累積）で反応が3段階に変わる:
+//       段階1 = 累積1〜2回 / 段階2 = 3〜5回 / 段階3 = 6回以上
+//     アスタロトは「突っぱねる→慣れる→少しだけ許す」の変化、
+//     フルフルは最初から喜ぶ側で、段階が進むほど距離が縮まる。
+//   ・単発クリック（OnMouseClick）には反応を付けない。意図的な判断:
+//     単発クリックはゴーストを掴んで動かすドラッグ操作の開始と区別が
+//     つかず、掴むたびに喋ると移動の邪魔になるため。つつきはダブル
+//     クリックに寄せる（一般的な伺かゴーストの流儀とも一致する）。
+//   ・看板表示中（astaroth_signboard が 0 でない間）は、二人とも姿が
+//     無いので全てのタッチ反応を止める（看板自体の Sign 部位も無反応）。
+//
+// 状態変数（全て astaroth_touch_* で、このファイル内でのみ管理する）:
+//   astaroth_touch_poke0 / poke1       : つつき最終発火時刻（対象別）
+//   astaroth_touch_nadelast0 / 1       : 撫で最終発火時刻（対象別）
+//   astaroth_touch_nadecount0 / 1      : 撫でた累積回数（対象別、段階判定用）
+//   astaroth_touch_mv_scope            : 撫で追跡中のスコープ（-1=追跡なし）
+//   astaroth_touch_mv_lastx            : 直前の x 座標
+//   astaroth_touch_mv_dir              : 現在の移動方向（1=右 / -1=左 / 0=未定）
+//   astaroth_touch_mv_leg              : 現在の区間の移動距離
+//   astaroth_touch_mv_rev              : 窓内の反転回数
+//   astaroth_touch_mv_start            : 現在の窓の開始時刻
+//
+// テスト用フック OnAstarothTouchTest（OnFurfurTalkTest と同種の保守用）:
+//   SSTP NOTIFY で Reference0 に 'reset'（全状態ゼロ）／'pre2'（撫で累積を
+//   2に設定＝次の1回で段階2）／'pre5'（同5＝次の1回で段階3）を送ると、
+//   クールダウンと追跡状態を消したうえで累積回数を設定する。無言で返す。
+//   合成テストで進めた段階を実機に残さないためにも使う。
+//
+// 規律（v2.10 の教訓）: 関数呼び出しの結果は必ず代入文で受ける。
+//******************************************************************************
+
+//******************************************************************************
+//状態管理ユーティリティ
+//******************************************************************************
+TouchNow
+{
+	TOINT(GETSECCOUNT)
+}
+
+TouchSignActive
+{
+	_r = 0
+	if ISVAR('astaroth_signboard') {
+		if TOINT(astaroth_signboard) != 0 {
+			_r = 1
+		}
+	}
+	_r
+}
+
+TouchPokeLast
+{
+	_v = 0
+	if _argv[0] == 1 {
+		if ISVAR('astaroth_touch_poke1') {
+			_v = astaroth_touch_poke1
+		}
+	}
+	else {
+		if ISVAR('astaroth_touch_poke0') {
+			_v = astaroth_touch_poke0
+		}
+	}
+	_v
+}
+
+TouchSetPokeLast
+{
+	if _argv[0] == 1 {
+		astaroth_touch_poke1 = _argv[1]
+	}
+	else {
+		astaroth_touch_poke0 = _argv[1]
+	}
+	1
+}
+
+TouchNadeLast
+{
+	_v = 0
+	if _argv[0] == 1 {
+		if ISVAR('astaroth_touch_nadelast1') {
+			_v = astaroth_touch_nadelast1
+		}
+	}
+	else {
+		if ISVAR('astaroth_touch_nadelast0') {
+			_v = astaroth_touch_nadelast0
+		}
+	}
+	_v
+}
+
+TouchSetNadeLast
+{
+	if _argv[0] == 1 {
+		astaroth_touch_nadelast1 = _argv[1]
+	}
+	else {
+		astaroth_touch_nadelast0 = _argv[1]
+	}
+	1
+}
+
+TouchNadeCount
+{
+	_v = 0
+	if _argv[0] == 1 {
+		if ISVAR('astaroth_touch_nadecount1') {
+			_v = astaroth_touch_nadecount1
+		}
+	}
+	else {
+		if ISVAR('astaroth_touch_nadecount0') {
+			_v = astaroth_touch_nadecount0
+		}
+	}
+	_v
+}
+
+TouchSetNadeCount
+{
+	if _argv[0] == 1 {
+		astaroth_touch_nadecount1 = _argv[1]
+	}
+	else {
+		astaroth_touch_nadecount0 = _argv[1]
+	}
+	1
+}
+
+//******************************************************************************
+//つつき（OnMouseDoubleClick）
+//******************************************************************************
+OnMouseDoubleClick
+{
+	_s = ''
+	if TOINT(reference[5]) == 0 {
+		if TouchSignActive == 0 {
+			_s = TouchPoke(TOINT(reference[3]), reference[4])
+		}
+	}
+	_s
+}
+
+TouchPoke
+{
+	_s = ''
+	_scope = _argv[0]
+	if _scope == 0 || _scope == 1 {
+		_now = TouchNow
+		_last = TouchPokeLast(_scope)
+		if _now - _last >= 5 {
+			if _scope == 0 {
+				_s = TouchPokeTalkA(_argv[1])
+			}
+			else {
+				_s = TouchPokeTalkF(_argv[1])
+			}
+			if _s != '' {
+				_d = TouchSetPokeLast(_scope, _now)
+			}
+		}
+	}
+	_s
+}
+
+TouchPokeTalkA
+{
+	_s = ''
+	if _argv[0] == 'Head' {
+		_s = TouchPokeAHead
+	}
+	elseif _argv[0] == 'Face' {
+		_s = TouchPokeAFace
+	}
+	elseif _argv[0] == 'Bust' {
+		_s = TouchPokeABust
+	}
+	else {
+		_s = TouchPokeAOther
+	}
+	_s
+}
+
+TouchPokeTalkF
+{
+	_s = ''
+	if _argv[0] == 'Head' {
+		_s = TouchPokeFHead
+	}
+	elseif _argv[0] == 'Face' {
+		_s = TouchPokeFFace
+	}
+	elseif _argv[0] == 'Bust' {
+		_s = TouchPokeFBust
+	}
+	else {
+		_s = TouchPokeFOther
+	}
+	_s
+}
+
+//--- アスタロト：頭 ---
+TouchPokeAHead
+{
+	'\0\s[2]…っ。\w8頭をつつくなんて、貴方も大概ね。\1\s[12]わ、びっくりしたー。\0\s[3]驚くのはこっちよ。\e'
+	'\0\s[3]こら。\w8大公爵の頭は、叩いて鳴らすものじゃないの。\1\s[11]ぽこぽこ鳴るの？\0\s[3]鳴らないわ。\e'
+	'\0\s[2]ひゃっ……。\w8今のは不意打ちよ。\w8数に入れないでちょうだい。\1\s[14]ロトちゃん、耳まで赤いよー。\0\s[4]うるさい。\e'
+}
+
+//--- アスタロト：顔 ---
+TouchPokeAFace
+{
+	'\0\s[2]頬をつつく趣味があって？\w8……まあ、貴方なら許すけれど。\1\s[13]ずるいー、私もー。\e'
+	'\0\s[4]……柔らかい、とか言ったら承知しないわよ。\1\s[11]もちもちだよねー。\0\s[3]言った側から。\e'
+}
+
+//--- アスタロト：胸（品を保った叱り方に寄せる） ---
+TouchPokeABust
+{
+	'\0\s[3]……貴方、今どこを触ったか分かっている？\w8次は業火で指先だけ焼くわよ。\1\s[12]マスター、顔真っ赤だよ？\0\s[3]黙りなさい。\e'
+	'\0\s[9]無礼者。\w8地獄の作法では、初回は警告で済むの。\w8次はないと思ってちょうだい。\1\s[13]こわーい。……マスター、ほどほどにね。\e'
+	'\0\s[2]きゃっ。\w8……今のは聞かなかったことにしなさい。\w8そして二度としないこと。\1\s[14]レアな声、聞いちゃった。\0\s[3]忘れなさい、今すぐ。\e'
+}
+
+//--- アスタロト：その他 ---
+TouchPokeAOther
+{
+	'\0\s[0]つついて楽しい？\w8貴方の暇つぶしに付き合うのも、たまには悪くないけれど。\e'
+	'\0\s[3]裾を引っ張るような真似はやめなさい。\w8子供じゃないでしょう、貴方は。\1\s[11]マスターは大きい子供だもんねー。\e'
+}
+
+//--- フルフル：頭 ---
+TouchPokeFHead
+{
+	'\1\s[12]わっ！\w8マスター、びっくりしたー！\0\s[3]……あんたは跳ねすぎ。\1\s[11]でも、かまってくれるのは嬉しいな。\e'
+	'\1\s[11]えへへ、つんつんされた。\w8私のツインテール、触り心地いいでしょ？\0\s[0]自慢げね。\e'
+}
+
+//--- フルフル：顔 ---
+TouchPokeFFace
+{
+	'\1\s[14]ほっぺた……マスター、近いよ？\w8ドキドキしちゃうなー。\0\s[3]顔を近づけすぎないでちょうだい、貴方。\e'
+	'\1\s[12]むにっ。\w8今、むにってされた！\w8お返しに、マスターのほっぺもむにっ。\0\s[1]仲が良いこと。\e'
+}
+
+//--- フルフル：胸 ---
+TouchPokeFBust
+{
+	'\1\s[13]もー、マスターでもそこはだめ！\w8……ロトちゃんに怒られても知らないよ？\0\s[3]当然怒るわ。\w8貴方、後でお説教よ。\e'
+	'\1\s[12]ひゃっ！\w8びっくりしたぁ……。\w8マスターのえっち。\0\s[3]ほら見なさい。\w8品位を保ちなさい、貴方。\e'
+}
+
+//--- フルフル：その他 ---
+TouchPokeFOther
+{
+	'\1\s[17]つんつん！\w8私もお返しにつんつんしたいなー。\0\s[0]許可は出していないわよ。\e'
+	'\1\s[10]なあに、マスター？\w8用があるなら、言葉で言ってくれてもいいんだよ？\e'
+}
+
+//******************************************************************************
+//撫で（OnMouseMove で Head 上の往復を検出）
+//******************************************************************************
+OnMouseMove
+{
+	_s = ''
+	if reference[4] == 'Head' {
+		if TouchSignActive == 0 {
+			_s = TouchNadeTrack(TOINT(reference[3]), TOINT(reference[0]))
+		}
+		else {
+			_d = TouchNadeForget
+		}
+	}
+	else {
+		_d = TouchNadeForget
+	}
+	_s
+}
+
+TouchNadeForget
+{
+	if ISVAR('astaroth_touch_mv_scope') {
+		if astaroth_touch_mv_scope != -1 {
+			astaroth_touch_mv_scope = -1
+			astaroth_touch_mv_dir = 0
+			astaroth_touch_mv_leg = 0
+			astaroth_touch_mv_rev = 0
+		}
+	}
+	0
+}
+
+TouchNadeTrack
+{
+	_s = ''
+	_scope = _argv[0]
+	if _scope == 0 || _scope == 1 {
+		_now = TouchNow
+		_last = TouchNadeLast(_scope)
+		if _now - _last >= 20 {
+			_st = TouchNadeStep(_scope, _argv[1], _now)
+			if _st == 'FIRE' {
+				_cnt = TouchNadeCount(_scope) + 1
+				_d = TouchSetNadeCount(_scope, _cnt)
+				_d = TouchSetNadeLast(_scope, _now)
+				_s = TouchNadeTalk(_scope, _cnt)
+			}
+		}
+	}
+	_s
+}
+
+TouchNadeStep
+{
+	_r = ''
+	_scope = _argv[0]
+	_x = _argv[1]
+	_now = _argv[2]
+	_alive = 0
+	if ISVAR('astaroth_touch_mv_scope') {
+		if astaroth_touch_mv_scope == _scope {
+			_alive = 1
+		}
+	}
+	if _alive == 0 {
+		astaroth_touch_mv_scope = _scope
+		astaroth_touch_mv_lastx = _x
+		astaroth_touch_mv_dir = 0
+		astaroth_touch_mv_leg = 0
+		astaroth_touch_mv_rev = 0
+		astaroth_touch_mv_start = _now
+	}
+	elseif _now - astaroth_touch_mv_start > 3 {
+		astaroth_touch_mv_lastx = _x
+		astaroth_touch_mv_dir = 0
+		astaroth_touch_mv_leg = 0
+		astaroth_touch_mv_rev = 0
+		astaroth_touch_mv_start = _now
+	}
+	else {
+		_dx = _x - astaroth_touch_mv_lastx
+		if _dx != 0 {
+			_adx = _dx
+			if _adx < 0 {
+				_adx = 0 - _adx
+			}
+			_dir = 1
+			if _dx < 0 {
+				_dir = -1
+			}
+			if astaroth_touch_mv_dir == 0 {
+				astaroth_touch_mv_dir = _dir
+				astaroth_touch_mv_leg = _adx
+			}
+			elseif _dir != astaroth_touch_mv_dir {
+				if astaroth_touch_mv_leg >= 12 {
+					astaroth_touch_mv_rev += 1
+				}
+				astaroth_touch_mv_dir = _dir
+				astaroth_touch_mv_leg = _adx
+			}
+			else {
+				astaroth_touch_mv_leg += _adx
+			}
+			astaroth_touch_mv_lastx = _x
+			if astaroth_touch_mv_rev >= 3 {
+				astaroth_touch_mv_scope = -1
+				astaroth_touch_mv_dir = 0
+				astaroth_touch_mv_leg = 0
+				astaroth_touch_mv_rev = 0
+				_r = 'FIRE'
+			}
+		}
+	}
+	_r
+}
+
+TouchNadeTalk
+{
+	_s = ''
+	_stage = 3
+	if _argv[1] <= 2 {
+		_stage = 1
+	}
+	elseif _argv[1] <= 5 {
+		_stage = 2
+	}
+	if _argv[0] == 0 {
+		if _stage == 1 {
+			_s = TouchNadeA1
+		}
+		elseif _stage == 2 {
+			_s = TouchNadeA2
+		}
+		else {
+			_s = TouchNadeA3
+		}
+	}
+	else {
+		if _stage == 1 {
+			_s = TouchNadeF1
+		}
+		elseif _stage == 2 {
+			_s = TouchNadeF2
+		}
+		else {
+			_s = TouchNadeF3
+		}
+	}
+	_s
+}
+
+//--- アスタロト：段階1（突っぱねる） ---
+TouchNadeA1
+{
+	'\0\s[3]……何をしているの、貴方。\w8撫でれば懐くとでも思った？\1\s[11]ロトちゃん、耳がピクピクしてるよ。\0\s[3]気のせいよ。\e'
+	'\0\s[2]こ、こら……。\w8大公爵を猫みたいに扱わないでちょうだい。\1\s[14]でも気持ちよさそう。\0\s[4]……否定は、しないけれど。\e'
+}
+
+//--- アスタロト：段階2（慣れる） ---
+TouchNadeA2
+{
+	'\0\s[4]……もう。\w8貴方の手つき、少しは様になってきたじゃない。\1\s[11]ほら、慣れてきた。\0\s[3]慣れてなどいない。\w8……少しだけよ。\e'
+	'\0\s[5]ん……。\w8……続けるなら、静かにしなさい。\w8騒ぐと、終いよ。\1\s[14]（……ロトちゃん、寝ちゃいそう。）\e'
+}
+
+//--- アスタロト：段階3（少しだけ許す） ---
+TouchNadeA3
+{
+	'\0\s[4]……特別よ、貴方。\w8他の誰にも、こんな真似は許していないんだから。\1\s[13]ずるーい、私も特別がいいー。\0\s[1]あんたはいつも特別扱いでしょう。\e'
+	'\0\s[5]……ふふ。\w8上手になったわね、貴方。\w8褒めてあげる。……もう少しだけ、いいわよ。\1\s[11]やった、公認だって！\e'
+}
+
+//--- フルフル：段階1（最初から喜ぶ） ---
+TouchNadeF1
+{
+	'\1\s[11]えへへー、なでなでだ！\w8マスターの手、あったかいね。\0\s[3]あんたは本当に単純ね。\1\s[11]嬉しいものは嬉しいの！\e'
+	'\1\s[17]わーい！\w8もっともっとー！\0\s[0]際限なく甘やかすのも考えものね、貴方。\e'
+}
+
+//--- フルフル：段階2 ---
+TouchNadeF2
+{
+	'\1\s[14]んふふ……。\w8マスターに撫でられると、雷が大人しくなる気がするの。\0\s[1]平和な証拠ね。\e'
+	'\1\s[11]そこそこ、耳のうしろー。\w8……冗談だって。私、翼の付け根が弱いんだよ？\0\s[3]余計なことを教えないでちょうだい。\e'
+}
+
+//--- フルフル：段階3 ---
+TouchNadeF3
+{
+	'\1\s[14]マスター……。\w8私をこんなに可愛がってくれるの、マスターだけだよ。\w8大好き、知ってる？\0\s[4]……ええ、知っているわ。\e'
+	'\1\s[15]すやすや……。\w8あ、寝てないよ？\w8気持ちよくて、目が閉じちゃうだけ。\0\s[1]幸せそうで何よりよ。\e'
+}
+
+//******************************************************************************
+//テスト用フック（状態の初期化／段階プリセット。無言で返す）
+//******************************************************************************
+OnAstarothTouchTest
+{
+	if reference[0] == 'pre2' {
+		_d = TouchTestReset(2)
+	}
+	elseif reference[0] == 'pre5' {
+		_d = TouchTestReset(5)
+	}
+	else {
+		_d = TouchTestReset(0)
+	}
+	''
+}
+
+TouchTestReset
+{
+	astaroth_touch_poke0 = 0
+	astaroth_touch_poke1 = 0
+	astaroth_touch_nadelast0 = 0
+	astaroth_touch_nadelast1 = 0
+	if _argv[0] == 2 {
+		astaroth_touch_nadecount0 = 2
+		astaroth_touch_nadecount1 = 2
+	}
+	elseif _argv[0] == 5 {
+		astaroth_touch_nadecount0 = 5
+		astaroth_touch_nadecount1 = 5
+	}
+	else {
+		astaroth_touch_nadecount0 = 0
+		astaroth_touch_nadecount1 = 0
+	}
+	astaroth_touch_mv_scope = -1
+	astaroth_touch_mv_dir = 0
+	astaroth_touch_mv_leg = 0
+	astaroth_touch_mv_rev = 0
+	0
+}

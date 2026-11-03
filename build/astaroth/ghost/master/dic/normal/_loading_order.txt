@@ -5,5 +5,6 @@ dic, astaroth_otherghost.dic, UTF-8
 dic, astaroth_signboard.dic, UTF-8
 dic, astaroth_string.dic, UTF-8
 dic, astaroth_talk.dic, UTF-8
+dic, astaroth_touch.dic, UTF-8
 dic, astaroth_update.dic, UTF-8
 dic, astaroth_voice.dic, UTF-8
