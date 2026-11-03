@@ -227,3 +227,10 @@
 - 初回コミット c616a0d にタグ **v2.12**（nar v2.12 相当）。push 済みで、新規 clone＋`git lfs pull` で画像・音声の実体が復元できること、辞書の MD5 一致まで検証済み。
 - 認証の経緯と制約：gh の標準ログインはスコープが広く（repo＋read:org で所属 organization に届き得る）ユーザーが懸念したため中止。SSH はこの VM の出口が塞がれており deploy key は使えない。最終的に、**リポジトリ単独に絞った fine-grained PAT（Contents RW、30日）をユーザーが発行し、一時利用で push**した。トークンはアスタロト側に一切保存していないため、今後の push のたびに再発行・再手渡しが必要。
 - 運用ルール：辞書を配信する前にコミットし、nar を作るたびにバージョンタグを打つ。壊れたら git から該当ファイルを取り戻す。
+
+## 追記12: push 経路を deploy key＋トンネル SSH へ移行（2026-11-03 夜）
+
+- ユーザーの選択により、認証を PAT 一時利用から **リポジトリ単独の deploy key** へ移行した（ユーザーが再登録、write 許可あり）。
+- この VM からの生 SSH は出口の HTTP プロキシ（CONNECT 専用）に切られるため、ssh.github.com:443 へ CONNECT トンネルで接続する。ヘルパーは `~/workspace/scripts/ssh-connect-proxy.py`（https_proxy 環境変数からプロキシ認証を組み立てる ProxyCommand）。
+- この実行環境の ssh は `~/.ssh/config` を既定で読まなかったため、設定はリポジトリ側に埋めた：origin = `ssh://git@ssh.github.com:443/FumiakiKob/astaroth-ghost.git`、`core.sshCommand` に ProxyCommand と鍵（~/.ssh/id_ed25519）を指定。
+- 検証：deploy key の認証応答（リポジトリ名入りの挨拶）、ls-remote、push dry-run、**LFS push dry-run（SSH 認証経由）**まで全て成功。以後の push はトークンの手渡しなしでアスタロト側から実行できる。
