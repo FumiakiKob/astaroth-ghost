@@ -1,0 +1,332 @@
+//******************************************************************************
+// アスタロト＋フルフル カスタムメニュー辞書 v1（2026-11-05、nar v2.17）
+// 右クリックメニューへの項目追加と、バルーン選択肢メニュー一式。
+//
+// 仕組み（裏取り済み）:
+//   SSP の右クリックメニュー（オーナードローメニュー）はベースウェア描画で、
+//   ゴースト側から項目そのものの追加・差し替えはできない（UKADOC
+//   「オーナードローメニュー」の項）。ゴースト側で変えられるのは、各項目の
+//   表示名・表示可否と、「おすすめ」項目の中身（SHIORI リソース
+//   sakura.recommendsites）だけ。そこで標準メニューには一切手を付けず、
+//   おすすめの中身を自前項目で差し替える「追加方式」にした。標準の導線
+//   （ゴースト情報・シェル／バルーン変更・設定・終了・標準のネットワーク
+//   更新）は全部そのまま残る。
+//   recommendsites の URL 欄に script: を書くと、選択時にそのさくら
+//   スクリプトが実行される（UKADOC「SHIORI Resource」sakura.recommendsites
+//   の項に、\![raise] も可能と明記）。各項目は script:\![raise,イベント] で
+//   この辞書のバルーン選択肢メニューを開き、ネットワーク更新だけは
+//   script:\![updatebymyself] で標準の更新ボタンと全く同じ動作にする。
+//   なお同梱のあやりりす（aya_lilith）は AYL_ 接頭辞の実装しか持たず、素の
+//   On_sakura.recommendsites は定義していないため競合しない（OnSystemLoad
+//   の上書き警告リストは、りりす前提で作られたゴースト向けの注意書き）。
+//   左ダブルクリックは「つつき」反応（astaroth_touch.dic）が使っているため、
+//   メニューの起点には使わない（2026-11-05、ユーザーの判断）。
+//
+// 選択肢の配線:
+//   バルーンの \q[表示名,Onイベント,引数...] は、選ぶとその SHIORI イベント
+//   が直接発火し、引数が Reference に入る（UKADOC さくらスクリプト一覧）。
+//   看板の立て替えは既存フック OnAstarothSignboard（astaroth_signboard.dic、
+//   Reference0=看板番号／0 でしまう）をそのまま選択先にして、看板の状態
+//   管理は看板辞書に一元化したままにする。
+//
+// トーク頻度:
+//   ランダムトークの間隔は、yaya_base が毎秒見る aitalkinterval（秒）。
+//   0 のときは発話自体が止まる（SHIORI3FW.ControlAITalk の分岐）。
+//   ユーザーの選択は専用変数 astaroth_talkfreq に保存し（YAYA のグローバル
+//   変数は再起動後も保持される。看板状態と同じ仕組み）、TalkFreqApply が
+//   起動時と他ゴースト呼び出し時に aitalkinterval へ反映する。従来は起動の
+//   たび 420 固定だった箇所（astaroth_bootend.dic／astaroth_otherghost.dic）
+//   を、この適用関数経由に改めた。
+//******************************************************************************
+
+//******************************************************************************
+//おすすめボタンの表示名（本体側・ルート側・相方側で同じ値を返す）
+//******************************************************************************
+On_sakura.recommendbuttoncaption
+{
+	'アスタロトのメニュー'
+}
+
+On_recommendrootbutton.caption
+{
+	'アスタロトのメニュー'
+}
+
+On_kero.recommendbuttoncaption
+{
+	'アスタロトのメニュー'
+}
+
+//******************************************************************************
+//おすすめ項目の一覧（本体側・相方側で同じ内容）
+// 書式: 項目名 (0x01) URL (0x01) バナー画像 (0x01) 選択時スクリプト (0x02)
+// の繰り返し。URL に script: を使うため、バナーと選択時スクリプトは空。
+// バイト値は実績のある C_BYTE1 と CHR(2) で組み立てる
+//（aya_lilith の LinkMenuConvert と同じ値の並び方）。
+//******************************************************************************
+On_sakura.recommendsites
+{
+	MenuRecommendSites
+}
+
+On_kero.recommendsites
+{
+	MenuRecommendSites
+}
+
+MenuRecommendSites
+{
+	_s = ''
+	_s += '看板を立て替える' + C_BYTE1 + 'script:\![raise,OnAstarothSignboardMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += '姿勢を変える' + C_BYTE1 + 'script:\![raise,OnAstarothPoseMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += 'トーク頻度の設定' + C_BYTE1 + 'script:\![raise,OnAstarothTalkFreqMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += 'ネットワーク更新' + C_BYTE1 + 'script:\![updatebymyself]' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += 'アスタロトについて' + C_BYTE1 + 'script:\![raise,OnAstarothAbout]' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s
+}
+
+//******************************************************************************
+//メニューを閉じるだけの選択肢
+//******************************************************************************
+OnAstarothMenuCancel
+{
+	'\e'
+}
+
+//******************************************************************************
+//看板番号→名前（表示専用。状態そのものは astaroth_signboard.dic が管理）
+//******************************************************************************
+MenuSignboardName
+{
+	_name = '不在'
+	if _argv[0] == 26 {
+		_name = '入浴中'
+	}
+	elseif _argv[0] == 27 {
+		_name = '外出中'
+	}
+	elseif _argv[0] == 28 {
+		_name = '勉強中'
+	}
+	elseif _argv[0] == 29 {
+		_name = '就寝中'
+	}
+	elseif _argv[0] == 30 {
+		_name = 'お留守番中'
+	}
+	_name
+}
+
+//******************************************************************************
+//看板の立て替えメニュー（選択先は既存フック OnAstarothSignboard）
+//******************************************************************************
+OnAstarothSignboardMenu
+{
+	_intro = '看板の立て替えね。'
+	_sign = 0
+	if ISVAR('astaroth_signboard') {
+		_sign = TOINT(astaroth_signboard)
+	}
+	if _sign != 0 {
+		_intro = 'いまは' + MenuSignboardName(_sign) + 'の看板が出ているわ。立て替える？'
+	}
+	_s = ''
+	_s += '\0' + _intro + '\n'
+	_s += '\q[入浴中,OnAstarothSignboard,26]\n'
+	_s += '\q[外出中,OnAstarothSignboard,27]\n'
+	_s += '\q[勉強中,OnAstarothSignboard,28]\n'
+	_s += '\q[就寝中,OnAstarothSignboard,29]\n'
+	_s += '\q[お留守番中（フルフル）,OnAstarothSignboard,30]\n'
+	_s += '\q[看板をしまう,OnAstarothSignboard,0]\n'
+	_s += '\q[やめる,OnAstarothMenuCancel]\e'
+	_s
+}
+
+//******************************************************************************
+//姿勢メニュー（サーフェスは選択時にだけ切り替える。永続状態は持たない）
+//******************************************************************************
+OnAstarothPoseMenu
+{
+	_s = ''
+	_s += '\0姿勢ね。どれにする？\n'
+	_s += '\q[立ち姿（通常）,OnAstarothPoseSelect,stand]\n'
+	_s += '\q[座る,OnAstarothPoseSelect,sit]\n'
+	_s += '\q[アスタロト：本を抱える,OnAstarothPoseSelect,book]\n'
+	_s += '\q[アスタロト：手を重ねる,OnAstarothPoseSelect,calm]\n'
+	_s += '\q[アスタロト：腕を組む,OnAstarothPoseSelect,proud]\n'
+	_s += '\q[フルフル：身を乗り出す,OnAstarothPoseSelect,lean]\n'
+	_s += '\q[フルフル：両手を広げる,OnAstarothPoseSelect,joy]\n'
+	_s += '\q[フルフル：お願い,OnAstarothPoseSelect,beg]\n'
+	_s += '\q[やめる,OnAstarothMenuCancel]\e'
+	_s
+}
+
+//******************************************************************************
+//姿勢の選択（Reference0=ポーズのキー）。看板表示中は看板を優先して断る
+//******************************************************************************
+OnAstarothPoseSelect
+{
+	_sign = 0
+	if ISVAR('astaroth_signboard') {
+		_sign = TOINT(astaroth_signboard)
+	}
+	_script = ''
+	if _sign != 0 {
+		_script = '\0\s[' + TOSTR(_sign) + ']看板が出ている間は、姿勢どころじゃないわ。先に看板をしまいなさい。\e'
+	}
+	elseif reference[0] == 'stand' {
+		_script = '\0\s[0]\1\s[10]いつもの立ち姿ね。これが一番落ち着くわ。\e'
+	}
+	elseif reference[0] == 'sit' {
+		_script = '\0\s[20]少し座りましょうか。\1\s[21]わーい、休憩だー！\0\s[3]あんたは座っても騒がしいわね。\e'
+	}
+	elseif reference[0] == 'book' {
+		_script = '\0\s[8]\1\s[10]本を抱えている方が、私らしいでしょう。\1\s[10]その本、恋の本？\0\s[3]違うわ。\e'
+	}
+	elseif reference[0] == 'calm' {
+		_script = '\0\s[6]\1\s[10]穏やかに、ね。たまにはこういう顔もするわ。\e'
+	}
+	elseif reference[0] == 'proud' {
+		_script = '\0\s[9]\1\s[10]大公爵の威厳は、腕の組み方ひとつにも出るのよ。\1\s[11]かっこいー！\e'
+	}
+	elseif reference[0] == 'lean' {
+		_script = '\1\s[16]マスター、もっと近くてもいいー？\0\s[3]近いわ、フルフル。ほどほどにしなさい。\e'
+	}
+	elseif reference[0] == 'joy' {
+		_script = '\1\s[17]喜びは隠せないんだよー！\0\s[0]両手を広げて喜ぶのが、あんたの平常運転ね。\e'
+	}
+	elseif reference[0] == 'beg' {
+		_script = '\1\s[19]えへへ、お願い、効いてる？\0\s[3]……そのポーズは反則よ、フルフル。少しだけ、ね。\e'
+	}
+	else {
+		_script = '\0\s[3]……その姿勢は知らないわ。\e'
+	}
+	_script
+}
+
+//******************************************************************************
+//トーク頻度: 保存済み設定（秒）を aitalkinterval へ反映する。
+// 起動処理（astaroth_bootend.dic）と他ゴースト呼び出し時
+//（astaroth_otherghost.dic）から呼ばれる。未設定なら従来どおり 420。
+//******************************************************************************
+TalkFreqApply
+{
+	_v = 420
+	if ISVAR('astaroth_talkfreq') {
+		_v = TOINT(astaroth_talkfreq)
+	}
+	aitalkinterval = _v
+	_v
+}
+
+//******************************************************************************
+//トーク頻度: 秒数→表示名
+//******************************************************************************
+TalkFreqLabel
+{
+	_label = '普通（約7分に一度）'
+	if _argv[0] == 180 {
+		_label = 'よく喋る（約3分に一度）'
+	}
+	elseif _argv[0] == 900 {
+		_label = '静か（約15分に一度）'
+	}
+	elseif _argv[0] == 0 {
+		_label = '黙る（トーク停止）'
+	}
+	_label
+}
+
+//******************************************************************************
+//トーク頻度の設定メニュー（現在の設定を表示してから選ばせる）
+//******************************************************************************
+OnAstarothTalkFreqMenu
+{
+	_v = 420
+	if ISVAR('astaroth_talkfreq') {
+		_v = TOINT(astaroth_talkfreq)
+	}
+	_s = ''
+	_s += '\0トークの頻度は、いま「' + TalkFreqLabel(_v) + '」よ。変える？\n'
+	_s += '\q[よく喋る（約3分）,OnAstarothTalkFreqSet,180]\n'
+	_s += '\q[普通（約7分）,OnAstarothTalkFreqSet,420]\n'
+	_s += '\q[静か（約15分）,OnAstarothTalkFreqSet,900]\n'
+	_s += '\q[黙る（トーク停止）,OnAstarothTalkFreqSet,0]\n'
+	_s += '\q[やめる,OnAstarothMenuCancel]\e'
+	_s
+}
+
+//******************************************************************************
+//トーク頻度の設定（Reference0=秒数。180／420／900／0 のみ受け付ける）。
+// 保存と即時反映を行い、確認の一言を返す。看板表示中は看板越しの一言に
+// 切り替え、姿や相方を出さない。
+//******************************************************************************
+OnAstarothTalkFreqSet
+{
+	_v = TOINT(reference[0])
+	_sign = 0
+	if ISVAR('astaroth_signboard') {
+		_sign = TOINT(astaroth_signboard)
+	}
+	_script = ''
+	if _v == 180 || _v == 420 || _v == 900 || _v == 0 {
+		astaroth_talkfreq = _v
+		aitalkinterval = _v
+		if _sign != 0 {
+			_script = '\0\s[' + TOSTR(_sign) + ']看板越しだけれど、聞こえているわ。頻度は「' + TalkFreqLabel(_v) + '」に変えたわよ。\e'
+		}
+		elseif _v == 180 {
+			_script = '\0\s[0]よく喋る、に変えたわ。約3分に一度、声をかける。\w8退屈はさせないけれど、うるさいと言っても遅いわよ。\1\s[11]やったー、お喋り増量だー！\e'
+		}
+		elseif _v == 420 {
+			_script = '\0\s[0]普通に戻したわ。約7分に一度が、私たちの平常運転よ。\1\s[10]ほどほどが一番だもんねー。\e'
+		}
+		elseif _v == 900 {
+			_script = '\0\s[0]静かにしたわ。約15分に一度だけ、声をかける。\w8……寂しくなったら、自分から呼びなさい、貴方。\e'
+		}
+		else {
+			_script = '\0\s[5]分かった、黙るわ。\w8呼ばれたときの返事と時報は別よ、安心なさい。\1\s[13]むー、私も静かにしてるね……多分。\e'
+		}
+	}
+	else {
+		_script = '\0\s[3]その頻度は扱えないわ。何も変えていないから、安心なさい。\e'
+	}
+	_script
+}
+
+//******************************************************************************
+//ゴースト情報（版数と内容の要約。看板表示中は看板越しの短い名乗りにする）
+//******************************************************************************
+OnAstarothAbout
+{
+	_sign = 0
+	if ISVAR('astaroth_signboard') {
+		_sign = TOINT(astaroth_signboard)
+	}
+	_script = ''
+	if _sign != 0 {
+		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.17。詳しくは看板をしまってから聞きなさい。\e'
+	}
+	else {
+		_script = '\0\s[0]ゴースト「アスタロト」、版は2.17よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8この版から、右クリックの「アスタロトのメニュー」で大概の用が足りるわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
+	}
+	_script
+}
+
+//******************************************************************************
+//テスト用フック OnAstarothMenuTest
+// SSTP NOTIFY（Event: OnAstarothMenuTest）で、リソース値の組み立て結果を
+// そのまま返す（Reference0=sites でおすすめ項目、caption でボタン表示名）。
+// メニュー本体のイベントは通常のイベントとして直接起こして確認できる。
+//******************************************************************************
+OnAstarothMenuTest
+{
+	_result = ''
+	if reference[0] == 'sites' {
+		_result = MenuRecommendSites
+	}
+	elseif reference[0] == 'caption' {
+		_result = On_sakura.recommendbuttoncaption
+	}
+	_result
+}

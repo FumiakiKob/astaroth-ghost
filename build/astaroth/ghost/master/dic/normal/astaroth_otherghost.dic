@@ -261,8 +261,9 @@ OnGhostCalled
 	//呼ばれて並んだ場合は起動トークと競合するため、挨拶を返すときだけ喋り、
 	//抑制されて空を返したときは通常の OnBoot に任せる（仕様上の発生順序）。
 	//OnBoot が発生しない経路でもランダムトーク間隔が既定値に戻らないよう、
-	//OnBoot と同じ間隔をここでも設定しておく。
-	aitalkinterval = 420
+	//OnBoot と同じく保存済みの頻度設定をここでも反映しておく
+	//（astaroth_menu.dic の TalkFreqApply）。
+	_r = TalkFreqApply
 	OGReact('called', reference[2], reference[0])
 }
 
