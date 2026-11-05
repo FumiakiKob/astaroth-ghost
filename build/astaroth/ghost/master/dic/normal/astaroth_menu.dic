@@ -1,5 +1,22 @@
 //******************************************************************************
-// アスタロト＋フルフル カスタムメニュー辞書 v3（2026-11-05、nar v2.19）
+// アスタロト＋フルフル カスタムメニュー辞書 v4（2026-11-05、nar v2.20）
+// v2.20 での変更（2026-11-05、ユーザーの判断）:
+//   本体側のおすすめ／ポータルは、v2.19 の2方式でも実機で両方とも
+//   グレーアウトのままだった。ユーザーは「看板がダブルクリックで
+//   解除できるなら、メニューは相方側だけで足りる」と判断したため、
+//   本体側の扉の追及はここで打ち切る。代わりに本体側の2経路は
+//   「リンク置き場」に転用する: sakura.recommendsites と
+//   sakura.portalsites の中身を、通常 URL のリンクエントリ
+//   （「Muse」→ https://muse.ai の1件）に置き換え、ボタン名も
+//   中身に合わせて「リンク」に改めた。有効化されるかどうかは実機で
+//   しか確定できない（グレーアウトのままなら現状と同じで損失なし）。
+//   相方側（script: 形式）は動作実績があるため一切変更していない。
+//   OnRecommendsiteChoice は、本体ポータルの旧方式（?m= 識別子つき
+//   URL）の受け口として残置するが、通常リンクのクリックで誤って
+//   発火しないよう、Reference1 に '?m=' を含む場合だけ応答する形に
+//   絞った（二重発火防止のガード自体は維持）。
+//   あわせて OnAstarothAbout の版数を 2.20 にし、案内文を実態
+//   （メニューはフルフル側、本体側はリンク置き場）に合わせた。
 // 右クリックメニューへの項目追加と、バルーン選択肢メニュー一式。
 //
 // 仕組み（裏取り済み）:
@@ -234,12 +251,14 @@ MenuDbgGet
 }
 
 //******************************************************************************
-//おすすめ／ポータルボタンの表示名（どの経路でも同じ値を返す）
+//おすすめ／ポータルボタンの表示名
+// 本体側は v2.20 から中身がリンク集になったため「リンク」に改めた
+//（ルート側・保険形式も含む）。相方側はメニューのまま不変。
 //******************************************************************************
 On_sakura.recommendbuttoncaption
 {
 	_hit = MenuDbgHit('sakura_cap')
-	'アスタロトのメニュー'
+	'リンク'
 }
 
 On_kero.recommendbuttoncaption
@@ -251,26 +270,26 @@ On_kero.recommendbuttoncaption
 On_sakura.portalbuttoncaption
 {
 	_hit = MenuDbgHit('portal_cap')
-	'アスタロトのメニュー（ポータル）'
+	'リンク'
 }
 
 On_recommendrootbutton.caption
 {
 	_hit = MenuDbgHit('root_cap')
-	'アスタロトのメニュー'
+	'リンク'
 }
 
 On_portalrootbutton.caption
 {
 	_hit = MenuDbgHit('proot_cap')
-	'アスタロトのメニュー（ポータル）'
+	'リンク'
 }
 
 // 世代差の保険: オーナードローメニュー項目名形式（*.recommendsites.caption）
 // と char* 形式のキャプションにも同じ値を返す（未使用でも無害）。
 On_sakura.recommendsites.caption
 {
-	'アスタロトのメニュー'
+	'リンク'
 }
 
 On_kero.recommendsites.caption
@@ -293,19 +312,18 @@ On_char1.recommendbuttoncaption
 // 書式: 項目名 (0x01) URL (0x01) バナー画像 (0x01) 選択時スクリプト (0x02)
 // の繰り返し。バイト値は実績のある C_BYTE1 と CHR(2) で組み立てる
 //（aya_lilith の LinkMenuConvert と同じ値の並び方）。
-// 経路ごとに組み立てを分けている（v2.19。理由は冒頭の変更メモ参照）:
+// 経路ごとに組み立てを分けている（理由は冒頭の変更メモ参照）:
 //   ・相方おすすめ／char0・char1 … MenuRecommendSites
 //     URL 欄に script: を書く形式。相方側では動作実績があるため不変。
-//   ・本体おすすめ … MenuSakuraRecommendSites
-//     URL 欄は homeurl（ダミー）、実行スクリプトは第4フィールドへ。
-//   ・本体ポータル … MenuSakuraPortalSites
-//     URL 欄に識別子つき homeurl を書き、選択は OnRecommendsiteChoice
-//     イベントで受ける（あやりりす方式）。
+//   ・本体おすすめ／本体ポータル … MenuSakuraLinkSites（v2.20）
+//     通常 URL のリンクエントリのみ（リンク置き場）。
+//     v2.19 の旧方式（MenuSakuraRecommendSites＝第4フィールド方式／
+//     MenuSakuraPortalSites＝選択イベント方式）は未使用として残置。
 //******************************************************************************
 On_sakura.recommendsites
 {
 	_hit = MenuDbgHit('sakura_sites')
-	MenuSakuraRecommendSites
+	MenuSakuraLinkSites
 }
 
 On_kero.recommendsites
@@ -317,7 +335,7 @@ On_kero.recommendsites
 On_sakura.portalsites
 {
 	_hit = MenuDbgHit('portal_sites')
-	MenuSakuraPortalSites
+	MenuSakuraLinkSites
 }
 
 On_char0.recommendsites
@@ -344,7 +362,19 @@ MenuRecommendSites
 }
 
 //******************************************************************************
-//本体おすすめ用の一覧（v2.19）
+//本体側リンク置き場の一覧（v2.20）
+// 本体側のおすすめ／ポータル共用。通常 URL のリンクエントリだけで
+// 構成し、選択時スクリプトは空にする。リンクは今後ここへ足していく。
+//******************************************************************************
+MenuSakuraLinkSites
+{
+	_s = ''
+	_s += 'Muse' + C_BYTE1 + 'https://muse.ai' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s
+}
+
+//******************************************************************************
+//本体おすすめ用の一覧（v2.19 の旧方式。v2.20 からは未使用）
 // URL 欄には homeurl をダミーで置き、実行したいスクリプトは正規の
 // 第4フィールド（選択時スクリプト）に入れる。script: は使わない。
 //******************************************************************************
@@ -360,7 +390,7 @@ MenuSakuraRecommendSites
 }
 
 //******************************************************************************
-//本体ポータル用の一覧（v2.19）
+//本体ポータル用の一覧（v2.19 の旧方式。v2.20 からは未使用）
 // URL 欄に識別子（?m=キー）つき homeurl を書き、スクリプトは持たない。
 // 選択されると OnRecommendsiteChoice が発火し、そちらで項目ごとに
 // 対応するバルーンメニューを開く（あやりりす方式）。
@@ -378,33 +408,40 @@ MenuSakuraPortalSites
 }
 
 //******************************************************************************
-//ポータル項目の選択イベント（v2.19）
+//ポータル項目の選択イベント（v2.19。v2.20 で応答条件を限定）
 // Reference0=項目名／1=URL／3='recommend'|'portal'／4=0:本体,1:相方／
 // 5=上からの位置（0始まり）。UKADOC「SHIORI Event」OnRecommendsiteChoice。
 // 対象は本体ポータル（Reference3='portal' かつ Reference4=0）のみで、
-// それ以外（本体おすすめの第4フィールド実行に伴う通知や、相方側の
-// script: 項目の選択）は空を返して一切干渉しない（二重発火の防止）。
+// それ以外（本体おすすめの実行に伴う通知や、相方側の script: 項目の
+// 選択）は空を返して一切干渉しない（二重発火の防止）。
+// v2.20: 本体ポータルの中身は通常リンクに置き換わったため、この
+// イベントは旧方式の識別子つき URL（Reference1 に '?m=' を含む）
+// のときにだけ応答するよう絞った。通常リンクのクリックでは空を
+// 返し、ブラウザが開く以外のことは何も起きない（残置・無害化）。
 //******************************************************************************
 OnRecommendsiteChoice
 {
 	_hit = MenuDbgHit('choice')
 	_script = ''
 	if reference[3] == 'portal' {
-		if TOINT(reference[4]) == 0 {
-			if TOINT(reference[5]) == 0 {
-				_script = OnAstarothSignboardMenu
-			}
-			elseif TOINT(reference[5]) == 1 {
-				_script = OnAstarothPoseMenu
-			}
-			elseif TOINT(reference[5]) == 2 {
-				_script = OnAstarothTalkFreqMenu
-			}
-			elseif TOINT(reference[5]) == 3 {
-				_script = '\![updatebymyself]'
-			}
-			elseif TOINT(reference[5]) == 4 {
-				_script = OnAstarothAbout
+		_mparts = SPLIT(reference[1], '?m=')
+		if ARRAYSIZE(_mparts) >= 2 {
+			if TOINT(reference[4]) == 0 {
+				if TOINT(reference[5]) == 0 {
+					_script = OnAstarothSignboardMenu
+				}
+				elseif TOINT(reference[5]) == 1 {
+					_script = OnAstarothPoseMenu
+				}
+				elseif TOINT(reference[5]) == 2 {
+					_script = OnAstarothTalkFreqMenu
+				}
+				elseif TOINT(reference[5]) == 3 {
+					_script = '\![updatebymyself]'
+				}
+				elseif TOINT(reference[5]) == 4 {
+					_script = OnAstarothAbout
+				}
 			}
 		}
 	}
@@ -631,10 +668,10 @@ OnAstarothAbout
 	}
 	_script = ''
 	if _sign != 0 {
-		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.19。詳しくは看板をしまってから聞きなさい。\e'
+		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.20。詳しくは看板をしまってから聞きなさい。\e'
 	}
 	else {
-		_script = '\0\s[0]ゴースト「アスタロト」、版は2.19よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8右クリックの「おすすめ」か「ポータル」にある「アスタロトのメニュー」で、大概の用が足りるわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
+		_script = '\0\s[0]ゴースト「アスタロト」、版は2.20よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8用があるときは、フルフルを右クリックして「アスタロトのメニュー」を開きなさい。私の側のボタンは、リンク置き場になっているわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
 	}
 	_script
 }
