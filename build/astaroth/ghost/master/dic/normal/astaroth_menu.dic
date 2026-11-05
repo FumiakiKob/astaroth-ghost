@@ -1,5 +1,5 @@
 //******************************************************************************
-// アスタロト＋フルフル カスタムメニュー辞書 v1（2026-11-05、nar v2.17）
+// アスタロト＋フルフル カスタムメニュー辞書 v2（2026-11-05、nar v2.18）
 // 右クリックメニューへの項目追加と、バルーン選択肢メニュー一式。
 //
 // 仕組み（裏取り済み）:
@@ -22,6 +22,23 @@
 //   左ダブルクリックは「つつき」反応（astaroth_touch.dic）が使っているため、
 //   メニューの起点には使わない（2026-11-05、ユーザーの判断）。
 //
+// v2.18 での変更（2026-11-05、実機不具合への対応）:
+//   v2.17 の実機確認で「おすすめ配下の『アスタロトのメニュー』が相方
+//   （フルフル）側の右クリックでしか出ない」という症状が出た。本体側で
+//   どのリソースが実際に要求されているか辞書側からは直接見えないため、
+//   本版では本体側の扉を複線化し、あわせて要求の実測カウンタを入れた。
+//   ・本体側の扉を「おすすめ」に加えて「ポータル」（sakura.portalsites。
+//     UKADOC 上も script: が使える、本体側＋ルート専用の別経路）にも
+//     同じ項目一覧を載せた。
+//   ・世代差の保険として char0／char1 の recommendsites と
+//     *.recommendsites.caption 形式のキャプションも同じ値を返す。
+//   ・各リソース関数に要求回数カウンタ（astaroth_dbg_*、永続）を入れ、
+//     OnAstarothMenuTest の trace で読み出せるようにした。SSP が実際に
+//     どの ID を要求したかが、実機で右クリックした後に判別できる。
+//   ・看板表示中の詰み（相方が消えてメニューを開けず看板を戻せない）は、
+//     本体側の扉の複線化に加え、astaroth_touch.dic 側に「看板表示中は
+//     本体側のダブルクリックで看板をしまう」非常口を追加して解消した。
+//
 // 選択肢の配線:
 //   バルーンの \q[表示名,Onイベント,引数...] は、選ぶとその SHIORI イベント
 //   が直接発火し、引数が Reference に入る（UKADOC さくらスクリプト一覧）。
@@ -40,37 +57,234 @@
 //******************************************************************************
 
 //******************************************************************************
-//おすすめボタンの表示名（本体側・ルート側・相方側で同じ値を返す）
+//リソース要求の実測カウンタ（v2.18）
+// SSP が実際にどのリソース ID を要求したかを数える。キーは以下の通り:
+//   sakura_sites / kero_sites / portal_sites / char0_sites / char1_sites
+//   sakura_cap / kero_cap / portal_cap / root_cap / proot_cap
+// 読み出しと消去は OnAstarothMenuTest（trace / traceclear）。
+//******************************************************************************
+MenuDbgHit
+{
+	if _argv[0] == 'sakura_sites' {
+		_n = 0
+		if ISVAR('astaroth_dbg_sakura_sites') {
+			_n = TOINT(astaroth_dbg_sakura_sites)
+		}
+		astaroth_dbg_sakura_sites = _n + 1
+	}
+	elseif _argv[0] == 'kero_sites' {
+		_n = 0
+		if ISVAR('astaroth_dbg_kero_sites') {
+			_n = TOINT(astaroth_dbg_kero_sites)
+		}
+		astaroth_dbg_kero_sites = _n + 1
+	}
+	elseif _argv[0] == 'portal_sites' {
+		_n = 0
+		if ISVAR('astaroth_dbg_portal_sites') {
+			_n = TOINT(astaroth_dbg_portal_sites)
+		}
+		astaroth_dbg_portal_sites = _n + 1
+	}
+	elseif _argv[0] == 'char0_sites' {
+		_n = 0
+		if ISVAR('astaroth_dbg_char0_sites') {
+			_n = TOINT(astaroth_dbg_char0_sites)
+		}
+		astaroth_dbg_char0_sites = _n + 1
+	}
+	elseif _argv[0] == 'char1_sites' {
+		_n = 0
+		if ISVAR('astaroth_dbg_char1_sites') {
+			_n = TOINT(astaroth_dbg_char1_sites)
+		}
+		astaroth_dbg_char1_sites = _n + 1
+	}
+	elseif _argv[0] == 'sakura_cap' {
+		_n = 0
+		if ISVAR('astaroth_dbg_sakura_cap') {
+			_n = TOINT(astaroth_dbg_sakura_cap)
+		}
+		astaroth_dbg_sakura_cap = _n + 1
+	}
+	elseif _argv[0] == 'kero_cap' {
+		_n = 0
+		if ISVAR('astaroth_dbg_kero_cap') {
+			_n = TOINT(astaroth_dbg_kero_cap)
+		}
+		astaroth_dbg_kero_cap = _n + 1
+	}
+	elseif _argv[0] == 'portal_cap' {
+		_n = 0
+		if ISVAR('astaroth_dbg_portal_cap') {
+			_n = TOINT(astaroth_dbg_portal_cap)
+		}
+		astaroth_dbg_portal_cap = _n + 1
+	}
+	elseif _argv[0] == 'root_cap' {
+		_n = 0
+		if ISVAR('astaroth_dbg_root_cap') {
+			_n = TOINT(astaroth_dbg_root_cap)
+		}
+		astaroth_dbg_root_cap = _n + 1
+	}
+	elseif _argv[0] == 'proot_cap' {
+		_n = 0
+		if ISVAR('astaroth_dbg_proot_cap') {
+			_n = TOINT(astaroth_dbg_proot_cap)
+		}
+		astaroth_dbg_proot_cap = _n + 1
+	}
+	1
+}
+
+MenuDbgGet
+{
+	_n = 0
+	if _argv[0] == 'sakura_sites' {
+		if ISVAR('astaroth_dbg_sakura_sites') {
+			_n = TOINT(astaroth_dbg_sakura_sites)
+		}
+	}
+	elseif _argv[0] == 'kero_sites' {
+		if ISVAR('astaroth_dbg_kero_sites') {
+			_n = TOINT(astaroth_dbg_kero_sites)
+		}
+	}
+	elseif _argv[0] == 'portal_sites' {
+		if ISVAR('astaroth_dbg_portal_sites') {
+			_n = TOINT(astaroth_dbg_portal_sites)
+		}
+	}
+	elseif _argv[0] == 'char0_sites' {
+		if ISVAR('astaroth_dbg_char0_sites') {
+			_n = TOINT(astaroth_dbg_char0_sites)
+		}
+	}
+	elseif _argv[0] == 'char1_sites' {
+		if ISVAR('astaroth_dbg_char1_sites') {
+			_n = TOINT(astaroth_dbg_char1_sites)
+		}
+	}
+	elseif _argv[0] == 'sakura_cap' {
+		if ISVAR('astaroth_dbg_sakura_cap') {
+			_n = TOINT(astaroth_dbg_sakura_cap)
+		}
+	}
+	elseif _argv[0] == 'kero_cap' {
+		if ISVAR('astaroth_dbg_kero_cap') {
+			_n = TOINT(astaroth_dbg_kero_cap)
+		}
+	}
+	elseif _argv[0] == 'portal_cap' {
+		if ISVAR('astaroth_dbg_portal_cap') {
+			_n = TOINT(astaroth_dbg_portal_cap)
+		}
+	}
+	elseif _argv[0] == 'root_cap' {
+		if ISVAR('astaroth_dbg_root_cap') {
+			_n = TOINT(astaroth_dbg_root_cap)
+		}
+	}
+	elseif _argv[0] == 'proot_cap' {
+		if ISVAR('astaroth_dbg_proot_cap') {
+			_n = TOINT(astaroth_dbg_proot_cap)
+		}
+	}
+	_n
+}
+
+//******************************************************************************
+//おすすめ／ポータルボタンの表示名（どの経路でも同じ値を返す）
 //******************************************************************************
 On_sakura.recommendbuttoncaption
 {
-	'アスタロトのメニュー'
-}
-
-On_recommendrootbutton.caption
-{
+	_hit = MenuDbgHit('sakura_cap')
 	'アスタロトのメニュー'
 }
 
 On_kero.recommendbuttoncaption
 {
+	_hit = MenuDbgHit('kero_cap')
+	'アスタロトのメニュー'
+}
+
+On_sakura.portalbuttoncaption
+{
+	_hit = MenuDbgHit('portal_cap')
+	'アスタロトのメニュー'
+}
+
+On_recommendrootbutton.caption
+{
+	_hit = MenuDbgHit('root_cap')
+	'アスタロトのメニュー'
+}
+
+On_portalrootbutton.caption
+{
+	_hit = MenuDbgHit('proot_cap')
+	'アスタロトのメニュー'
+}
+
+// 世代差の保険: オーナードローメニュー項目名形式（*.recommendsites.caption）
+// と char* 形式のキャプションにも同じ値を返す（未使用でも無害）。
+On_sakura.recommendsites.caption
+{
+	'アスタロトのメニュー'
+}
+
+On_kero.recommendsites.caption
+{
+	'アスタロトのメニュー'
+}
+
+On_char0.recommendbuttoncaption
+{
+	'アスタロトのメニュー'
+}
+
+On_char1.recommendbuttoncaption
+{
 	'アスタロトのメニュー'
 }
 
 //******************************************************************************
-//おすすめ項目の一覧（本体側・相方側で同じ内容）
+//おすすめ／ポータル項目の一覧（全経路で同じ内容を返す）
 // 書式: 項目名 (0x01) URL (0x01) バナー画像 (0x01) 選択時スクリプト (0x02)
 // の繰り返し。URL に script: を使うため、バナーと選択時スクリプトは空。
 // バイト値は実績のある C_BYTE1 と CHR(2) で組み立てる
 //（aya_lilith の LinkMenuConvert と同じ値の並び方）。
+// 本体側は「おすすめ」と「ポータル」の二つの扉から同じ一覧を出す
+//（ポータルは本体側＋ルート専用の別経路で、script: の実行も仕様上可能）。
 //******************************************************************************
 On_sakura.recommendsites
 {
+	_hit = MenuDbgHit('sakura_sites')
 	MenuRecommendSites
 }
 
 On_kero.recommendsites
 {
+	_hit = MenuDbgHit('kero_sites')
+	MenuRecommendSites
+}
+
+On_sakura.portalsites
+{
+	_hit = MenuDbgHit('portal_sites')
+	MenuRecommendSites
+}
+
+On_char0.recommendsites
+{
+	_hit = MenuDbgHit('char0_sites')
+	MenuRecommendSites
+}
+
+On_char1.recommendsites
+{
+	_hit = MenuDbgHit('char1_sites')
 	MenuRecommendSites
 }
 
@@ -305,10 +519,10 @@ OnAstarothAbout
 	}
 	_script = ''
 	if _sign != 0 {
-		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.17。詳しくは看板をしまってから聞きなさい。\e'
+		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.18。詳しくは看板をしまってから聞きなさい。\e'
 	}
 	else {
-		_script = '\0\s[0]ゴースト「アスタロト」、版は2.17よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8この版から、右クリックの「アスタロトのメニュー」で大概の用が足りるわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
+		_script = '\0\s[0]ゴースト「アスタロト」、版は2.18よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8右クリックの「おすすめ」か「ポータル」にある「アスタロトのメニュー」で、大概の用が足りるわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
 	}
 	_script
 }
@@ -318,6 +532,11 @@ OnAstarothAbout
 // SSTP NOTIFY（Event: OnAstarothMenuTest）で、リソース値の組み立て結果を
 // そのまま返す（Reference0=sites でおすすめ項目、caption でボタン表示名）。
 // メニュー本体のイベントは通常のイベントとして直接起こして確認できる。
+// v2.18 追加: trace で SSP からの実リソース要求回数（MenuDbgHit の
+// カウンタ）をバルーン表示し、traceclear でカウンタを消去する。
+// 注意: caption の確認はこの辞書の関数を直接呼ぶため、カウンタが増える
+//（実機での右クリックによる要求と区別したい場合は、先に traceclear を
+// 送ってから実機操作をしてもらうこと）。
 //******************************************************************************
 OnAstarothMenuTest
 {
@@ -327,6 +546,22 @@ OnAstarothMenuTest
 	}
 	elseif reference[0] == 'caption' {
 		_result = On_sakura.recommendbuttoncaption
+	}
+	elseif reference[0] == 'trace' {
+		_result = '\0\s[0]【メニューリソース要求の実測】\n項目: 本体おすすめ ' + TOSTR(MenuDbgGet('sakura_sites')) + ' 回／相方おすすめ ' + TOSTR(MenuDbgGet('kero_sites')) + ' 回／本体ポータル ' + TOSTR(MenuDbgGet('portal_sites')) + ' 回／char0 ' + TOSTR(MenuDbgGet('char0_sites')) + ' 回／char1 ' + TOSTR(MenuDbgGet('char1_sites')) + ' 回\n名称: 本体おすすめ ' + TOSTR(MenuDbgGet('sakura_cap')) + ' 回／相方おすすめ ' + TOSTR(MenuDbgGet('kero_cap')) + ' 回／本体ポータル ' + TOSTR(MenuDbgGet('portal_cap')) + ' 回／ルートおすすめ ' + TOSTR(MenuDbgGet('root_cap')) + ' 回／ルートポータル ' + TOSTR(MenuDbgGet('proot_cap')) + ' 回\e'
+	}
+	elseif reference[0] == 'traceclear' {
+		astaroth_dbg_sakura_sites = 0
+		astaroth_dbg_kero_sites = 0
+		astaroth_dbg_portal_sites = 0
+		astaroth_dbg_char0_sites = 0
+		astaroth_dbg_char1_sites = 0
+		astaroth_dbg_sakura_cap = 0
+		astaroth_dbg_kero_cap = 0
+		astaroth_dbg_portal_cap = 0
+		astaroth_dbg_root_cap = 0
+		astaroth_dbg_proot_cap = 0
+		_result = '\0\s[0]実測カウンタは消しておいたわ。\e'
 	}
 	_result
 }
