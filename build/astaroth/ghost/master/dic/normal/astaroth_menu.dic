@@ -1,5 +1,5 @@
 //******************************************************************************
-// アスタロト＋フルフル カスタムメニュー辞書 v2（2026-11-05、nar v2.18）
+// アスタロト＋フルフル カスタムメニュー辞書 v3（2026-11-05、nar v2.19）
 // 右クリックメニューへの項目追加と、バルーン選択肢メニュー一式。
 //
 // 仕組み（裏取り済み）:
@@ -39,6 +39,33 @@
 //     本体側の扉の複線化に加え、astaroth_touch.dic 側に「看板表示中は
 //     本体側のダブルクリックで看板をしまう」非常口を追加して解消した。
 //
+// v2.19 での変更（2026-11-05、実機症状への対応）:
+//   v2.18 の実機確認で、本体側のボタン2つ（おすすめ／ポータル）が表示
+//   されるものの両方グレーアウトして押せないことが判明した。実測カウンタ
+//   により、SSP は sakura.recommendsites／sakura.portalsites と各キャプション
+//   を実際に要求し、値も返っている（本体おすすめ項目3回・名称4回／本体
+//   ポータル項目3回・名称3回。相方おすすめは項目・名称とも5回で正常動作）。
+//   つまり「要求も返値もあるのに本体側だけ無効化される」状態で、辞書側の
+//   対称性や書式（あやりりす LinkMenuConvert と同一の並び）は相方側で
+//   実証済みのため、残る差異は URL 欄の script: 記述だけになる。本体側の
+//   オーナードローメニュー経路では script: を URL として受理せず、全項目が
+//   無効＝ボタンごとグレーアウトになる、というのが最も整合する説明である
+//   （対照として、本体側のおすすめ／ポータルで実績のある S the Skeleton や
+//   あやりりす前提ゴーストは、どちらも通常の http URL しか使っていない）。
+//   そこで本体側の2経路を、script: を使わない別々の実績形式に振り分けた:
+//   ・おすすめ（sakura.recommendsites）: URL 欄には homeurl（ダミー）を
+//     置き、実行したいスクリプトは正規の第4フィールド（選択時スクリプト）
+//     へ移した（MenuSakuraRecommendSites）。
+//   ・ポータル（sakura.portalsites）: URL 欄に識別子つき homeurl を置き、
+//     選択は OnRecommendsiteChoice イベントで受ける（あやりりす方式。
+//     MenuSakuraPortalSites）。ポータルのボタン名は判別用に
+//     「アスタロトのメニュー（ポータル）」とした。
+//   どちらの経路が有効化されるかは次回の実機確認で判別でき、選択イベントの
+//   受信回数も実測カウンタ（choice）で追えるようにした。相方側は動作実績の
+//   ある script: 形式のまま変更していない。
+//   あわせて看板30の表示名を「外出中（フルフルが留守番）」に改めた
+//   （意味が伝わらなかったという実機指摘への対応）。
+//
 // 選択肢の配線:
 //   バルーンの \q[表示名,Onイベント,引数...] は、選ぶとその SHIORI イベント
 //   が直接発火し、引数が Reference に入る（UKADOC さくらスクリプト一覧）。
@@ -60,7 +87,7 @@
 //リソース要求の実測カウンタ（v2.18）
 // SSP が実際にどのリソース ID を要求したかを数える。キーは以下の通り:
 //   sakura_sites / kero_sites / portal_sites / char0_sites / char1_sites
-//   sakura_cap / kero_cap / portal_cap / root_cap / proot_cap
+//   sakura_cap / kero_cap / portal_cap / root_cap / proot_cap / choice
 // 読み出しと消去は OnAstarothMenuTest（trace / traceclear）。
 //******************************************************************************
 MenuDbgHit
@@ -135,6 +162,13 @@ MenuDbgHit
 		}
 		astaroth_dbg_proot_cap = _n + 1
 	}
+	elseif _argv[0] == 'choice' {
+		_n = 0
+		if ISVAR('astaroth_dbg_choice') {
+			_n = TOINT(astaroth_dbg_choice)
+		}
+		astaroth_dbg_choice = _n + 1
+	}
 	1
 }
 
@@ -191,6 +225,11 @@ MenuDbgGet
 			_n = TOINT(astaroth_dbg_proot_cap)
 		}
 	}
+	elseif _argv[0] == 'choice' {
+		if ISVAR('astaroth_dbg_choice') {
+			_n = TOINT(astaroth_dbg_choice)
+		}
+	}
 	_n
 }
 
@@ -212,7 +251,7 @@ On_kero.recommendbuttoncaption
 On_sakura.portalbuttoncaption
 {
 	_hit = MenuDbgHit('portal_cap')
-	'アスタロトのメニュー'
+	'アスタロトのメニュー（ポータル）'
 }
 
 On_recommendrootbutton.caption
@@ -224,7 +263,7 @@ On_recommendrootbutton.caption
 On_portalrootbutton.caption
 {
 	_hit = MenuDbgHit('proot_cap')
-	'アスタロトのメニュー'
+	'アスタロトのメニュー（ポータル）'
 }
 
 // 世代差の保険: オーナードローメニュー項目名形式（*.recommendsites.caption）
@@ -250,18 +289,23 @@ On_char1.recommendbuttoncaption
 }
 
 //******************************************************************************
-//おすすめ／ポータル項目の一覧（全経路で同じ内容を返す）
+//おすすめ／ポータル項目の一覧
 // 書式: 項目名 (0x01) URL (0x01) バナー画像 (0x01) 選択時スクリプト (0x02)
-// の繰り返し。URL に script: を使うため、バナーと選択時スクリプトは空。
-// バイト値は実績のある C_BYTE1 と CHR(2) で組み立てる
+// の繰り返し。バイト値は実績のある C_BYTE1 と CHR(2) で組み立てる
 //（aya_lilith の LinkMenuConvert と同じ値の並び方）。
-// 本体側は「おすすめ」と「ポータル」の二つの扉から同じ一覧を出す
-//（ポータルは本体側＋ルート専用の別経路で、script: の実行も仕様上可能）。
+// 経路ごとに組み立てを分けている（v2.19。理由は冒頭の変更メモ参照）:
+//   ・相方おすすめ／char0・char1 … MenuRecommendSites
+//     URL 欄に script: を書く形式。相方側では動作実績があるため不変。
+//   ・本体おすすめ … MenuSakuraRecommendSites
+//     URL 欄は homeurl（ダミー）、実行スクリプトは第4フィールドへ。
+//   ・本体ポータル … MenuSakuraPortalSites
+//     URL 欄に識別子つき homeurl を書き、選択は OnRecommendsiteChoice
+//     イベントで受ける（あやりりす方式）。
 //******************************************************************************
 On_sakura.recommendsites
 {
 	_hit = MenuDbgHit('sakura_sites')
-	MenuRecommendSites
+	MenuSakuraRecommendSites
 }
 
 On_kero.recommendsites
@@ -273,7 +317,7 @@ On_kero.recommendsites
 On_sakura.portalsites
 {
 	_hit = MenuDbgHit('portal_sites')
-	MenuRecommendSites
+	MenuSakuraPortalSites
 }
 
 On_char0.recommendsites
@@ -297,6 +341,74 @@ MenuRecommendSites
 	_s += 'ネットワーク更新' + C_BYTE1 + 'script:\![updatebymyself]' + C_BYTE1 + C_BYTE1 + CHR(2)
 	_s += 'アスタロトについて' + C_BYTE1 + 'script:\![raise,OnAstarothAbout]' + C_BYTE1 + C_BYTE1 + CHR(2)
 	_s
+}
+
+//******************************************************************************
+//本体おすすめ用の一覧（v2.19）
+// URL 欄には homeurl をダミーで置き、実行したいスクリプトは正規の
+// 第4フィールド（選択時スクリプト）に入れる。script: は使わない。
+//******************************************************************************
+MenuSakuraRecommendSites
+{
+	_s = ''
+	_s += '看板を立て替える' + C_BYTE1 + 'http://localhost:8189/astaroth/' + C_BYTE1 + C_BYTE1 + '\![raise,OnAstarothSignboardMenu]' + CHR(2)
+	_s += '姿勢を変える' + C_BYTE1 + 'http://localhost:8189/astaroth/' + C_BYTE1 + C_BYTE1 + '\![raise,OnAstarothPoseMenu]' + CHR(2)
+	_s += 'トーク頻度の設定' + C_BYTE1 + 'http://localhost:8189/astaroth/' + C_BYTE1 + C_BYTE1 + '\![raise,OnAstarothTalkFreqMenu]' + CHR(2)
+	_s += 'ネットワーク更新' + C_BYTE1 + 'http://localhost:8189/astaroth/' + C_BYTE1 + C_BYTE1 + '\![updatebymyself]' + CHR(2)
+	_s += 'アスタロトについて' + C_BYTE1 + 'http://localhost:8189/astaroth/' + C_BYTE1 + C_BYTE1 + '\![raise,OnAstarothAbout]' + CHR(2)
+	_s
+}
+
+//******************************************************************************
+//本体ポータル用の一覧（v2.19）
+// URL 欄に識別子（?m=キー）つき homeurl を書き、スクリプトは持たない。
+// 選択されると OnRecommendsiteChoice が発火し、そちらで項目ごとに
+// 対応するバルーンメニューを開く（あやりりす方式）。
+// 項目の並び順は OnRecommendsiteChoice の Reference5（0始まり）と対応。
+//******************************************************************************
+MenuSakuraPortalSites
+{
+	_s = ''
+	_s += '看板を立て替える' + C_BYTE1 + 'http://localhost:8189/astaroth/?m=sign' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += '姿勢を変える' + C_BYTE1 + 'http://localhost:8189/astaroth/?m=pose' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += 'トーク頻度の設定' + C_BYTE1 + 'http://localhost:8189/astaroth/?m=freq' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += 'ネットワーク更新' + C_BYTE1 + 'http://localhost:8189/astaroth/?m=update' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += 'アスタロトについて' + C_BYTE1 + 'http://localhost:8189/astaroth/?m=about' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s
+}
+
+//******************************************************************************
+//ポータル項目の選択イベント（v2.19）
+// Reference0=項目名／1=URL／3='recommend'|'portal'／4=0:本体,1:相方／
+// 5=上からの位置（0始まり）。UKADOC「SHIORI Event」OnRecommendsiteChoice。
+// 対象は本体ポータル（Reference3='portal' かつ Reference4=0）のみで、
+// それ以外（本体おすすめの第4フィールド実行に伴う通知や、相方側の
+// script: 項目の選択）は空を返して一切干渉しない（二重発火の防止）。
+//******************************************************************************
+OnRecommendsiteChoice
+{
+	_hit = MenuDbgHit('choice')
+	_script = ''
+	if reference[3] == 'portal' {
+		if TOINT(reference[4]) == 0 {
+			if TOINT(reference[5]) == 0 {
+				_script = OnAstarothSignboardMenu
+			}
+			elseif TOINT(reference[5]) == 1 {
+				_script = OnAstarothPoseMenu
+			}
+			elseif TOINT(reference[5]) == 2 {
+				_script = OnAstarothTalkFreqMenu
+			}
+			elseif TOINT(reference[5]) == 3 {
+				_script = '\![updatebymyself]'
+			}
+			elseif TOINT(reference[5]) == 4 {
+				_script = OnAstarothAbout
+			}
+		}
+	}
+	_script
 }
 
 //******************************************************************************
@@ -326,7 +438,7 @@ MenuSignboardName
 		_name = '就寝中'
 	}
 	elseif _argv[0] == 30 {
-		_name = 'お留守番中'
+		_name = '外出中（フルフルが留守番）'
 	}
 	_name
 }
@@ -350,7 +462,7 @@ OnAstarothSignboardMenu
 	_s += '\q[外出中,OnAstarothSignboard,27]\n'
 	_s += '\q[勉強中,OnAstarothSignboard,28]\n'
 	_s += '\q[就寝中,OnAstarothSignboard,29]\n'
-	_s += '\q[お留守番中（フルフル）,OnAstarothSignboard,30]\n'
+	_s += '\q[外出中（フルフルが留守番）,OnAstarothSignboard,30]\n'
 	_s += '\q[看板をしまう,OnAstarothSignboard,0]\n'
 	_s += '\q[やめる,OnAstarothMenuCancel]\e'
 	_s
@@ -519,10 +631,10 @@ OnAstarothAbout
 	}
 	_script = ''
 	if _sign != 0 {
-		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.18。詳しくは看板をしまってから聞きなさい。\e'
+		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.19。詳しくは看板をしまってから聞きなさい。\e'
 	}
 	else {
-		_script = '\0\s[0]ゴースト「アスタロト」、版は2.18よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8右クリックの「おすすめ」か「ポータル」にある「アスタロトのメニュー」で、大概の用が足りるわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
+		_script = '\0\s[0]ゴースト「アスタロト」、版は2.19よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8右クリックの「おすすめ」か「ポータル」にある「アスタロトのメニュー」で、大概の用が足りるわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
 	}
 	_script
 }
@@ -548,7 +660,7 @@ OnAstarothMenuTest
 		_result = On_sakura.recommendbuttoncaption
 	}
 	elseif reference[0] == 'trace' {
-		_result = '\0\s[0]【メニューリソース要求の実測】\n項目: 本体おすすめ ' + TOSTR(MenuDbgGet('sakura_sites')) + ' 回／相方おすすめ ' + TOSTR(MenuDbgGet('kero_sites')) + ' 回／本体ポータル ' + TOSTR(MenuDbgGet('portal_sites')) + ' 回／char0 ' + TOSTR(MenuDbgGet('char0_sites')) + ' 回／char1 ' + TOSTR(MenuDbgGet('char1_sites')) + ' 回\n名称: 本体おすすめ ' + TOSTR(MenuDbgGet('sakura_cap')) + ' 回／相方おすすめ ' + TOSTR(MenuDbgGet('kero_cap')) + ' 回／本体ポータル ' + TOSTR(MenuDbgGet('portal_cap')) + ' 回／ルートおすすめ ' + TOSTR(MenuDbgGet('root_cap')) + ' 回／ルートポータル ' + TOSTR(MenuDbgGet('proot_cap')) + ' 回\e'
+		_result = '\0\s[0]【メニューリソース要求の実測】\n項目: 本体おすすめ ' + TOSTR(MenuDbgGet('sakura_sites')) + ' 回／相方おすすめ ' + TOSTR(MenuDbgGet('kero_sites')) + ' 回／本体ポータル ' + TOSTR(MenuDbgGet('portal_sites')) + ' 回／char0 ' + TOSTR(MenuDbgGet('char0_sites')) + ' 回／char1 ' + TOSTR(MenuDbgGet('char1_sites')) + ' 回\n名称: 本体おすすめ ' + TOSTR(MenuDbgGet('sakura_cap')) + ' 回／相方おすすめ ' + TOSTR(MenuDbgGet('kero_cap')) + ' 回／本体ポータル ' + TOSTR(MenuDbgGet('portal_cap')) + ' 回／ルートおすすめ ' + TOSTR(MenuDbgGet('root_cap')) + ' 回／ルートポータル ' + TOSTR(MenuDbgGet('proot_cap')) + ' 回\n選択イベント: ' + TOSTR(MenuDbgGet('choice')) + ' 回\e'
 	}
 	elseif reference[0] == 'traceclear' {
 		astaroth_dbg_sakura_sites = 0
@@ -561,6 +673,7 @@ OnAstarothMenuTest
 		astaroth_dbg_portal_cap = 0
 		astaroth_dbg_root_cap = 0
 		astaroth_dbg_proot_cap = 0
+		astaroth_dbg_choice = 0
 		_result = '\0\s[0]実測カウンタは消しておいたわ。\e'
 	}
 	_result
