@@ -3,6 +3,7 @@ dic, astaroth_hourly.dic, UTF-8
 dic, astaroth_install.dic, UTF-8
 dic, astaroth_menu.dic, UTF-8
 dic, astaroth_otherghost.dic, UTF-8
+dic, astaroth_shell.dic, UTF-8
 dic, astaroth_signboard.dic, UTF-8
 dic, astaroth_string.dic, UTF-8
 dic, astaroth_talk.dic, UTF-8

@@ -1,0 +1,183 @@
+//******************************************************************************
+// アスタロト＋フルフル シェル自動切り替え辞書 v1（2026-11-05、nar v2.22）
+// 第2シェル「night」（夜セット: アスタロト=A7 ラベンダーブルーの
+// ロングネグリジェ＋シアーガウン／フルフル=N5 黒の短いネグリジェ＋
+// 白レース）を、時刻に合わせて自動で切り替える。
+//
+// 仕様（裏取り済み、UKADOC さくらスクリプト一覧／SHIORI Event 一覧）:
+//   ・シェルの切り替えは さくらスクリプト \![change,shell,シェル名]。
+//     該当シェルが無ければ無視される。用例は \![change,shell,master]。
+//     シェル名はシェルの descript の name（night はフォルダ名と一致
+//     させてある。通常シェルは master フォルダ／name は Master）。
+//   ・切り替え後は OnShellChanged（Reference0=現在のシェル名）が
+//     通知される。これで現在シェルを変数 astaroth_shell_name に追跡し、
+//     SSP のメニューから手動で切り替えられた場合にも追従する。
+//
+// 夜の定義: 23:00〜翌 7:30（入浴看板が立つ時刻から、朝の看板自動
+// 解除の時刻まで）。判定は GETTIME（[4]=時、[5]=分。時報辞書と
+// 同じ取得法）による時刻ベースのみで、毎秒監視はしない。
+//
+// 合わせ直しの同梱先（「姿を現す場面」のスクリプト先頭に、必要なら
+// 切り替えタグを前置する）:
+//   ・OnBoot（astaroth_bootend.dic。看板の起動時吸収トークを含む）
+//   ・看板の解除 SignboardClear（astaroth_signboard.dic。朝 7:30 の
+//     自動解除もこの経路を通るため、朝は通常シェルへ自然に戻る）
+//   ・他ゴーストに呼ばれた OnGhostCalled の反応トーク
+//     （astaroth_otherghost.dic。抑制されて空のときは付けない）
+// 手動切り替えは astaroth_menu.dic の「衣装を変える」
+//（OnAstarothShellSet）で、その場だけ切り替える。次の「現す場面」で
+// 時刻判定に再び合わされる（手動が自動を上書きし続けることはない）。
+//
+// テスト用: OnAstarothShellTest（SSTP NOTIFY）で時刻上書き
+//（astaroth_shell_testhour／testmin。-1 で解除）・目標シェル名・
+// 同期タグ・現在シェル名を確認できる。上書き変数が無ければ
+// 実時刻で判定する（通常運用では未設定）。
+//
+// 規律（v2.10 の教訓）: 関数呼び出しの結果は必ず代入文で受ける。
+// 裸の関数呼び出し文は書かない。
+//******************************************************************************
+
+//******************************************************************************
+//現在時刻（時）。テスト用上書きがあればそちらを返す
+//******************************************************************************
+ShellNowHour
+{
+	_h = TOINT(GETTIME[4])
+	if ISVAR('astaroth_shell_testhour') {
+		_t = TOINT(astaroth_shell_testhour)
+		if _t >= 0 {
+			_h = _t
+		}
+	}
+	_h
+}
+
+//******************************************************************************
+//現在時刻（分）。テスト用上書きがあればそちらを返す
+//******************************************************************************
+ShellNowMinute
+{
+	_m = TOINT(GETTIME[5])
+	if ISVAR('astaroth_shell_testmin') {
+		_t = TOINT(astaroth_shell_testmin)
+		if _t >= 0 {
+			_m = _t
+		}
+	}
+	_m
+}
+
+//******************************************************************************
+//いま夜かどうか（23:00〜翌 7:30）。夜なら 1、昼なら 0
+//******************************************************************************
+ShellIsNight
+{
+	_h = ShellNowHour
+	_m = ShellNowMinute
+	_night = 0
+	if _h >= 23 {
+		_night = 1
+	}
+	elseif _h < 7 {
+		_night = 1
+	}
+	elseif _h == 7 && _m < 30 {
+		_night = 1
+	}
+	_night
+}
+
+//******************************************************************************
+//時刻に合った目標シェル名（'night' または 'master'）
+//******************************************************************************
+ShellDesiredName
+{
+	_name = 'master'
+	if ShellIsNight == 1 {
+		_name = 'night'
+	}
+	_name
+}
+
+//******************************************************************************
+//シェル変更の通知 OnShellChanged（Reference0=現在のシェル名）
+// 現在シェルを変数に記録するだけ（喋らない）
+//******************************************************************************
+OnShellChanged
+{
+	astaroth_shell_name = reference[0]
+	''
+}
+
+//******************************************************************************
+//同期タグ: 現在シェルが時刻の目標と違うときだけ、切り替えタグを返す。
+// 一致していれば空。呼び出し側は「現す場面」のスクリプト先頭に前置する。
+// _argv[0] : 1 のときは現在シェル名が未記録でも目標へ寄せる（起動時用）
+//******************************************************************************
+ShellSyncTag
+{
+	_desired = ShellDesiredName
+	_cur = ''
+	if ISVAR('astaroth_shell_name') {
+		_cur = astaroth_shell_name
+	}
+	_need = 0
+	if _desired == 'night' {
+		if _cur != 'night' {
+			_need = 1
+		}
+	}
+	else {
+		if _cur == 'night' {
+			_need = 1
+		}
+		elseif _cur == '' && TOINT(_argv[0]) == 1 {
+			_need = 1
+		}
+	}
+	_tag = ''
+	if _need == 1 {
+		_tag = '\![change,shell,' + _desired + ']'
+		if _desired == 'night' {
+			astaroth_shell_name = 'night'
+		}
+		else {
+			astaroth_shell_name = 'Master'
+		}
+	}
+	_tag
+}
+
+//******************************************************************************
+//テスト用フック OnAstarothShellTest（SSTP NOTIFY）
+// Reference0:
+//   'time'  : Reference1=時／Reference2=分 でテスト用時刻を上書きする
+//   'clear' : 時刻上書きを解除する
+//   'state' : 目標シェル名と現在シェル名をバルーンで返す
+//   'sync'  : ShellSyncTag(0) の結果（タグまたは空）をそのまま返す
+//******************************************************************************
+OnAstarothShellTest
+{
+	_result = ''
+	if reference[0] == 'time' {
+		astaroth_shell_testhour = TOINT(reference[1])
+		astaroth_shell_testmin = TOINT(reference[2])
+		_result = '\0\s[0]テスト用時刻を ' + TOSTR(TOINT(reference[1])) + ':' + TOSTR(TOINT(reference[2])) + ' に上書きしたわ。目標シェルは ' + ShellDesiredName + ' よ。\e'
+	}
+	elseif reference[0] == 'clear' {
+		astaroth_shell_testhour = -1
+		astaroth_shell_testmin = -1
+		_result = '\0\s[0]テスト用時刻の上書きは解除したわ。実時刻で判定する。\e'
+	}
+	elseif reference[0] == 'state' {
+		_cur = '（未記録）'
+		if ISVAR('astaroth_shell_name') {
+			_cur = astaroth_shell_name
+		}
+		_result = '\0\s[0]【シェル同期の状態】目標: ' + ShellDesiredName + '／現在: ' + _cur + '\e'
+	}
+	elseif reference[0] == 'sync' {
+		_result = ShellSyncTag(0)
+	}
+	_result
+}

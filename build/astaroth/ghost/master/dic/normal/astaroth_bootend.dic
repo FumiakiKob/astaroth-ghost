@@ -30,6 +30,10 @@ OnBoot
 	if _script == '' {
 		_script = OnBootTalk
 	}
+	//姿を現す場面なので、シェルを時刻に合わせて前置する
+	//（astaroth_shell.dic。起動時は現在シェル未記録でも目標へ寄せる）。
+	_tag = ShellSyncTag(1)
+	_script = _tag + _script
 	_script
 }
 

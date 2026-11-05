@@ -264,7 +264,14 @@ OnGhostCalled
 	//OnBoot と同じく保存済みの頻度設定をここでも反映しておく
 	//（astaroth_menu.dic の TalkFreqApply）。
 	_r = TalkFreqApply
-	OGReact('called', reference[2], reference[0])
+	_script = OGReact('called', reference[2], reference[0])
+	//挨拶を返すときは姿を現す場面なので、シェルを時刻に合わせて前置する
+	//（astaroth_shell.dic。抑制されて空のときは付けない）。
+	if _script != '' {
+		_tag = ShellSyncTag(0)
+		_script = _tag + _script
+	}
+	_script
 }
 
 OnGhostCalling

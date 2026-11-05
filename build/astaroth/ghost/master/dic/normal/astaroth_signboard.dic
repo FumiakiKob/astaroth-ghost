@@ -88,6 +88,10 @@ SignboardClear
 	if _n >= 26 && _n <= 30 {
 		astaroth_signboard = 0
 		_script = SignboardReturnTalk(_n)
+		//姿を現す場面なので、シェルを時刻に合わせて前置する
+		//（astaroth_shell.dic。朝の自動解除で通常シェルへ戻るのもこの経路）。
+		_tag = ShellSyncTag(0)
+		_script = _tag + _script
 	}
 	_script
 }

@@ -1,5 +1,9 @@
 //******************************************************************************
-// アスタロト＋フルフル カスタムメニュー辞書 v5（2026-11-05、nar v2.21）
+// アスタロト＋フルフル カスタムメニュー辞書 v6（2026-11-05、nar v2.22）
+// v2.22 での変更: 「衣装を変える」を追加（OnAstarothShellMenu／
+// OnAstarothShellSet）。第2シェル「night」（夜セット）への手動
+// 切り替えで、通常は astaroth_shell.dic の時刻判定（23:00〜7:30）
+// で自動で切り替わる。あわせて OnAstarothAbout の版数を 2.22 に。
 // v2.21 での変更（2026-11-05、実機確認を受けた方針転換）:
 //   v2.20 の実機確認で、本体側の「リンク」ボタン2つは当初グレーアウト
 //   していたものの、ゴーストを再起動したら有効になっていたことが
@@ -381,6 +385,7 @@ MenuRecommendSites
 	_s = ''
 	_s += '看板を立て替える' + C_BYTE1 + 'script:\![raise,OnAstarothSignboardMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
 	_s += '姿勢を変える' + C_BYTE1 + 'script:\![raise,OnAstarothPoseMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
+	_s += '衣装を変える' + C_BYTE1 + 'script:\![raise,OnAstarothShellMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
 	_s += 'トーク頻度の設定' + C_BYTE1 + 'script:\![raise,OnAstarothTalkFreqMenu]' + C_BYTE1 + C_BYTE1 + CHR(2)
 	_s += 'ネットワーク更新' + C_BYTE1 + 'script:\![updatebymyself]' + C_BYTE1 + C_BYTE1 + CHR(2)
 	_s += 'アスタロトについて' + C_BYTE1 + 'script:\![raise,OnAstarothAbout]' + C_BYTE1 + C_BYTE1 + CHR(2)
@@ -594,6 +599,57 @@ OnAstarothPoseSelect
 }
 
 //******************************************************************************
+//衣装（シェル）の手動切り替えメニュー（v2.22）
+// 通常は astaroth_shell.dic の時刻判定で自動で切り替わる。ここでは
+// その場だけ切り替え、次の「現す場面」で時刻判定に再び合わされる。
+// 現在の装いの表示は、OnShellChanged で追跡している
+// astaroth_shell_name による（未記録のときは通常とみなす）。
+//******************************************************************************
+OnAstarothShellMenu
+{
+	_cur = '通常'
+	if ISVAR('astaroth_shell_name') {
+		if astaroth_shell_name == 'night' {
+			_cur = '夜'
+		}
+	}
+	_s = ''
+	_s += '\0衣装ね。いまは' + _cur + 'の装いよ。通常は時刻で自動で切り替わるけれど、今だけ変えることもできるわ。\n'
+	_s += '\q[通常の装い,OnAstarothShellSet,master]\n'
+	_s += '\q[夜の装い（ネグリジェ）,OnAstarothShellSet,night]\n'
+	_s += '\q[やめる,OnAstarothMenuCancel]\e'
+	_s
+}
+
+//******************************************************************************
+//衣装の選択（Reference0='master'|'night'）。切り替えタグと一言を返す。
+// 看板表示中は看板を優先して断る（姿勢メニューと同じ扱い）。
+//******************************************************************************
+OnAstarothShellSet
+{
+	_sign = 0
+	if ISVAR('astaroth_signboard') {
+		_sign = TOINT(astaroth_signboard)
+	}
+	_script = ''
+	if _sign != 0 {
+		_script = '\0\s[' + TOSTR(_sign) + ']看板が出ている間は、着替えどころじゃないわ。先に看板をしまいなさい。\e'
+	}
+	elseif reference[0] == 'night' {
+		astaroth_shell_name = 'night'
+		_script = '\![change,shell,night]\0\s[0]……夜の装いに着替えたわ。\w8ネグリジェよ、貴方。じっと見すぎないでちょうだい。\1\s[11]フルフルもおそろいー！\e'
+	}
+	elseif reference[0] == 'master' {
+		astaroth_shell_name = 'Master'
+		_script = '\![change,shell,master]\0\s[0]通常の装いに戻したわ。\w8……やっぱり、このドレスが落ち着くわね。\1\s[10]いつものアスタロトだー。\e'
+	}
+	else {
+		_script = '\0\s[3]……その衣装は知らないわ。\e'
+	}
+	_script
+}
+
+//******************************************************************************
 //トーク頻度: 保存済み設定（秒）を aitalkinterval へ反映する。
 // 起動処理（astaroth_bootend.dic）と他ゴースト呼び出し時
 //（astaroth_otherghost.dic）から呼ばれる。未設定なら従来どおり 420。
@@ -694,10 +750,10 @@ OnAstarothAbout
 	}
 	_script = ''
 	if _sign != 0 {
-		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.21。詳しくは看板をしまってから聞きなさい。\e'
+		_script = '\0\s[' + TOSTR(_sign) + ']看板越しに名乗るのも変な話ね。ゴースト「アスタロト」、版は2.22。詳しくは看板をしまってから聞きなさい。\e'
 	}
 	else {
-		_script = '\0\s[0]ゴースト「アスタロト」、版は2.21よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8用があるときは、私かフルフルを右クリックして、おすすめの「アスタロトのメニュー」を開きなさい。ポータルの方は、リンク置き場になっているわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
+		_script = '\0\s[0]ゴースト「アスタロト」、版は2.22よ。\w8地獄の大公爵アスタロトと、雷と愛の堕天使フルフルが、貴方のデスクトップに居座っているわ。\w8お喋りは百本余り、時報は毎正時に声つき、看板に、つつきへの反応まで備えた。\w8夜になると、ネグリジェの装いにも着替えるわ。\w8用があるときは、私かフルフルを右クリックして、おすすめの「アスタロトのメニュー」を開きなさい。ポータルの方は、リンク置き場になっているわ。\1\s[11]制作はアスタロト、あと私もいるよー！\e'
 	}
 	_script
 }
