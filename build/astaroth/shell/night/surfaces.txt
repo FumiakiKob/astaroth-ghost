@@ -5,6 +5,9 @@ descript
 version,1
 }
 
+// v2.23: ポーズ6〜9・46〜49（A7）、フルフルポーズ16〜19・56〜59（N5）、座り20・21を
+// 夜衣装で本制作し仮置きを解消。基本面0〜5・10〜15は色距離キーイングで再抜きし、
+// 光輪内側の緑残りを除去。当たり判定は全て差し替え後の最終画像の実測 bbox から付け替えた。
 // 【夜シェル】surface0〜5: アスタロト夜セット（A7: ラベンダーブルーの
 // ロングネグリジェ＋シアーガウン、seed 777401）。寸法は 725〜743x1216
 //（ガウンの広がりで通常シェルより幅広）。
@@ -12,17 +15,17 @@ version,1
 // surface1〜5 は同シード量産で顔位置が揃うため同じ座標を流用する。
 surface0
 {
-collision0,215,55,505,265,Head
-collision1,270,145,450,255,Face
-collision2,255,330,475,485,Bust
+collision0,215,57,505,267,Head
+collision1,270,147,450,257,Face
+collision2,255,331,475,486,Bust
 }
 
 // surface1: 笑顔
 surface1
 {
-collision0,215,55,505,265,Head
-collision1,270,145,450,255,Face
-collision2,255,330,475,485,Bust
+collision0,215,57,505,267,Head
+collision1,270,147,450,257,Face
+collision2,255,331,475,486,Bust
 }
 
 // surface2: 驚き
@@ -36,25 +39,25 @@ collision2,255,330,475,485,Bust
 // surface3: 呆れ・不機嫌
 surface3
 {
-collision0,215,55,505,265,Head
-collision1,270,145,450,255,Face
-collision2,255,330,475,485,Bust
+collision0,215,56,505,266,Head
+collision1,270,146,450,256,Face
+collision2,255,331,475,486,Bust
 }
 
 // surface4: 照れ
 surface4
 {
-collision0,215,55,505,265,Head
-collision1,270,145,450,255,Face
-collision2,255,330,475,485,Bust
+collision0,215,57,504,267,Head
+collision1,270,147,449,257,Face
+collision2,255,331,474,486,Bust
 }
 
 // surface5: 目閉じ
 surface5
 {
-collision0,215,55,505,265,Head
-collision1,270,145,450,255,Face
-collision2,255,330,475,485,Bust
+collision0,215,56,505,266,Head
+collision1,270,146,450,256,Face
+collision2,255,331,475,486,Bust
 }
 
 // surface6〜9: アスタロト ポーズ差分（第一弾、2026-11-03）。
@@ -63,33 +66,33 @@ collision2,255,330,475,485,Bust
 // surface6: 手を重ねる（素直な立ち、630x1216。裾のトレーン分だけ幅が広い）
 surface6
 {
-collision0,190,78,368,282,Head
-collision1,205,148,345,278,Face
-collision2,185,385,450,505,Bust
+collision0,216,87,419,291,Head
+collision1,233,157,392,287,Face
+collision2,210,393,512,513,Bust
 }
 
 // surface7: 手を合わせ俯く（斜め横向き、478x1216。顔は左寄り・低め）
 surface7
 {
-collision0,92,82,292,338,Head
-collision1,112,200,268,332,Face
-collision2,65,437,325,557,Bust
+collision0,76,120,264,368,Head
+collision1,95,234,242,363,Face
+collision2,50,464,296,581,Bust
 }
 
 // surface8: 本を抱える（478x1216）
 surface8
 {
-collision0,132,70,318,268,Head
-collision1,152,148,298,262,Face
-collision2,125,365,340,490,Bust
+collision0,205,85,484,281,Head
+collision1,235,163,454,275,Face
+collision2,194,377,517,501,Bust
 }
 
 // surface9: 腕組み（478x1216。基調は軽い見下し顔）
 surface9
 {
-collision0,126,76,324,262,Head
-collision1,146,182,304,256,Face
-collision2,110,361,375,481,Bust
+collision0,166,77,439,264,Head
+collision1,193,184,412,258,Face
+collision2,143,364,510,485,Bust
 }
 
 // 【夜シェル】surface10〜15: フルフル夜セット（N5: 黒の短いネグリジェ
@@ -149,33 +152,33 @@ collision2,310,335,520,490,Bust
 // surface16: 身を乗り出す（821x1216。手を伸ばして前のめり）
 surface16
 {
-collision0,215,120,485,365,Head
-collision1,265,215,395,360,Face
-collision2,270,430,435,565,Bust
+collision0,215,122,485,366,Head
+collision1,265,217,395,361,Face
+collision2,270,431,435,565,Bust
 }
 
 // surface17: 両手を広げて喜ぶ（822x1216。翼も広げる）
 surface17
 {
-collision0,265,105,505,300,Head
-collision1,300,185,455,295,Face
-collision2,275,360,485,490,Bust
+collision0,265,115,504,308,Head
+collision1,300,194,454,303,Face
+collision2,275,368,484,497,Bust
 }
 
 // surface18: 拗ねてそっぽ（684x1216。後ろ向きで振り返る）
 surface18
 {
-collision0,200,40,565,255,Head
-collision1,330,150,480,250,Face
-collision2,295,385,510,520,Bust
+collision0,173,45,487,259,Head
+collision1,285,155,414,254,Face
+collision2,255,389,440,523,Bust
 }
 
 // surface19: 両手を合わせてお願い（825x1216。上目遣い）
 surface19
 {
-collision0,225,55,610,360,Head
-collision1,265,215,510,355,Face
-collision2,255,450,540,620,Bust
+collision0,176,88,474,384,Head
+collision1,207,244,397,380,Face
+collision2,199,472,420,637,Bust
 }
 
 // surface46〜49: アスタロト ポーズ差分の表情違い（基番＋40 の帯）。
@@ -183,33 +186,33 @@ collision2,255,450,540,620,Bust
 // surface46: 手を重ねる＋笑顔（478x1216）
 surface46
 {
-collision0,140,80,300,264,Head
-collision1,160,156,280,258,Face
-collision2,120,363,375,483,Bust
+collision0,188,86,440,270,Head
+collision1,219,162,408,264,Face
+collision2,156,369,558,489,Bust
 }
 
 // surface47: 手を合わせ俯く＋目閉じ（478x1216。深く俯くため顔は低く左寄り）
 surface47
 {
-collision0,105,98,262,304,Head
-collision1,130,182,240,298,Face
-collision2,85,403,330,523,Bust
+collision0,96,125,238,330,Head
+collision1,118,208,218,324,Face
+collision2,78,428,299,547,Bust
 }
 
 // surface48: 本を抱える＋笑顔（496x1216）
 surface48
 {
-collision0,152,72,324,254,Head
-collision1,172,146,304,248,Face
-collision2,130,353,360,473,Bust
+collision0,221,81,475,262,Head
+collision1,250,154,446,256,Face
+collision2,188,360,528,480,Bust
 }
 
 // surface49: 腕組み＋通常（穏やかな顔、478x1216）
 surface49
 {
-collision0,130,78,315,258,Head
-collision1,150,160,295,252,Face
-collision2,115,357,370,477,Bust
+collision0,179,80,478,260,Head
+collision1,211,162,445,254,Face
+collision2,155,358,566,478,Bust
 }
 
 // surface56〜59: フルフル ポーズ差分の表情違い（基番＋40 の帯）。
@@ -217,33 +220,33 @@ collision2,115,357,370,477,Bust
 // surface56: 身を乗り出す＋照れ（819x1216）
 surface56
 {
-collision0,225,105,495,365,Head
-collision1,255,255,390,360,Face
-collision2,270,435,430,560,Bust
+collision0,226,105,496,364,Head
+collision1,256,255,391,359,Face
+collision2,271,434,431,559,Bust
 }
 
 // surface57: 両手を広げて喜ぶ＋目閉じ（833x1216）
 surface57
 {
-collision0,295,130,550,300,Head
-collision1,320,235,490,300,Face
-collision2,305,385,520,500,Bust
+collision0,293,161,545,326,Head
+collision1,317,263,486,326,Face
+collision2,302,409,516,520,Bust
 }
 
 // surface58: 拗ねてそっぽ＋驚き（679x1216。振り向いて驚く）
 surface58
 {
-collision0,215,45,560,250,Head
-collision1,335,145,475,245,Face
-collision2,285,395,500,515,Bust
+collision0,243,50,634,254,Head
+collision1,379,150,538,249,Face
+collision2,322,398,566,518,Bust
 }
 
 // surface59: 両手を合わせてお願い＋笑顔（829x1216）
 surface59
 {
-collision0,235,100,610,345,Head
-collision1,280,230,505,340,Face
-collision2,265,440,530,600,Bust
+collision0,209,133,540,370,Head
+collision1,249,259,447,366,Face
+collision2,235,463,470,618,Bust
 }
 
 // surface20・21: 座りポーズ（第二弾、2026-11-03）。
@@ -252,17 +255,17 @@ collision2,265,440,530,600,Bust
 // surface20: アスタロト座り（762x1216。椅子に腰掛け膝を揃える、seed 201103）
 surface20
 {
-collision0,210,110,500,340,Head
-collision1,290,235,450,335,Face
-collision2,280,370,510,520,Bust
+collision0,190,108,451,338,Head
+collision1,262,233,406,333,Face
+collision2,253,368,460,518,Bust
 }
 
 // surface21: フルフル座り（792x1216。座って足をぶらつかせる、seed 21101）
 surface21
 {
-collision0,250,30,665,300,Head
-collision1,385,180,550,290,Face
-collision2,335,340,565,505,Bust
+collision0,250,27,664,298,Head
+collision1,385,177,549,288,Face
+collision2,335,338,564,503,Bust
 }
 
 // surface26〜30: 不在看板（2026-11-03、シェル拡充バッチ3）。
