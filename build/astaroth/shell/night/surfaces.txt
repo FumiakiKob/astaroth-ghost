@@ -102,49 +102,49 @@ collision2,143,364,510,485,Bust
 // surface10: フルフル通常
 surface10
 {
-collision0,230,45,600,330,Head
-collision1,320,150,505,290,Face
-collision2,310,335,520,490,Bust
+collision0,232,34,601,322,Head
+collision1,322,140,506,281,Face
+collision2,312,327,521,483,Bust
 }
 
 // surface11: フルフル笑顔（満面）
 surface11
 {
-collision0,230,45,600,330,Head
-collision1,320,150,505,290,Face
-collision2,310,335,520,490,Bust
+collision0,230,35,602,322,Head
+collision1,321,141,506,282,Face
+collision2,310,327,522,484,Bust
 }
 
 // surface12: フルフル驚き
 surface12
 {
-collision0,230,45,600,330,Head
-collision1,320,150,505,290,Face
-collision2,310,335,520,490,Bust
+collision0,241,40,594,326,Head
+collision1,326,145,503,286,Face
+collision2,317,331,517,487,Bust
 }
 
 // surface13: フルフル拗ね・不機嫌
 surface13
 {
-collision0,230,45,600,330,Head
-collision1,320,150,505,290,Face
-collision2,310,335,520,490,Bust
+collision0,234,35,599,322,Head
+collision1,323,141,505,282,Face
+collision2,313,327,520,484,Bust
 }
 
 // surface14: フルフル照れ・恋
 surface14
 {
-collision0,230,45,600,330,Head
-collision1,320,150,505,290,Face
-collision2,310,335,520,490,Bust
+collision0,249,38,584,325,Head
+collision1,331,144,498,284,Face
+collision2,322,330,512,486,Bust
 }
 
 // surface15: フルフル目閉じ
 surface15
 {
-collision0,230,45,600,330,Head
-collision1,320,150,505,290,Face
-collision2,310,335,520,490,Bust
+collision0,224,37,609,324,Head
+collision1,317,143,510,284,Face
+collision2,307,329,526,485,Bust
 }
 
 // surface16〜19: フルフル ポーズ差分（2026-11-03、シェル拡充フルフル分）。
