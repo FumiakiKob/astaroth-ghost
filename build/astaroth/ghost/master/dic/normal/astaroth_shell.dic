@@ -1,8 +1,12 @@
 //******************************************************************************
-// アスタロト＋フルフル シェル自動切り替え辞書 v1（2026-11-05、nar v2.22）
-// 第2シェル「night」（夜セット: アスタロト=A7 ラベンダーブルーの
-// ロングネグリジェ＋シアーガウン／フルフル=N5 黒の短いネグリジェ＋
-// 白レース）を、時刻に合わせて自動で切り替える。
+// アスタロト＋フルフル シェル自動切り替え辞書 v2（2026-11-07、nar v2.26）
+// v1（2026-11-05、nar v2.22）: 第2シェル「night」（夜セット: アスタロト=A7
+// ラベンダーブルーのロングネグリジェ＋シアーガウン／フルフル=N5 黒の短い
+// ネグリジェ＋白レース）を、時刻に合わせて自動で切り替える。
+// v2 での変更: 第3シェル「maid」（メイド服: 両名ともクラシックな黒×白
+// メイド）を追加し、手動切り替えにラッチ仕様を導入した（下記）。
+// あわせて看板を立てる経路（SignboardSet）にも同期タグを前置するよう
+// astaroth_signboard.dic 側を変更した（しまう経路だけだった v1 の欠け）。
 //
 // 仕様（裏取り済み、UKADOC さくらスクリプト一覧／SHIORI Event 一覧）:
 //   ・シェルの切り替えは さくらスクリプト \![change,shell,シェル名]。
@@ -22,11 +26,19 @@
 //   ・OnBoot（astaroth_bootend.dic。看板の起動時吸収トークを含む）
 //   ・看板の解除 SignboardClear（astaroth_signboard.dic。朝 7:30 の
 //     自動解除もこの経路を通るため、朝は通常シェルへ自然に戻る）
+//   ・看板を立てる SignboardSet（astaroth_signboard.dic。v2 で追加。
+//     立て替えの一言が目標シェルの姿で出るようにする）
 //   ・他ゴーストに呼ばれた OnGhostCalled の反応トーク
 //     （astaroth_otherghost.dic。抑制されて空のときは付けない）
-// 手動切り替えは astaroth_menu.dic の「衣装を変える」
-//（OnAstarothShellSet）で、その場だけ切り替える。次の「現す場面」で
-// 時刻判定に再び合わされる（手動が自動を上書きし続けることはない）。
+// 手動切り替えとラッチ仕様（v2）:
+//   astaroth_menu.dic の「衣装を変える」（OnAstarothShellSet）で選んだ
+//   シェルは、手動ラッチ（astaroth_shell_latch＝シェル名、
+//   astaroth_shell_latch_band＝選んだ時点の時刻帯 'day'/'night'）に
+//   記録され、次の時刻帯の境目まで維持される。境目を跨ぐとラッチは
+//   解除され、時刻判定に戻る: 昼に選んだ装いは 23:00 の夜間帯入りで
+//   night が優先され、夜に選んだ装いはその夜間帯の間だけ維持されて
+//   朝 7:30 に master へ戻る。ラッチが無いときの master/night 間の
+//   自動挙動は v1 から変えていない。
 //
 // テスト用: OnAstarothShellTest（SSTP NOTIFY）で時刻上書き
 //（astaroth_shell_testhour／testmin。-1 で解除）・目標シェル名・
@@ -88,13 +100,42 @@ ShellIsNight
 }
 
 //******************************************************************************
-//時刻に合った目標シェル名（'night' または 'master'）
+//現在の時刻帯（'night' または 'day'）
+//******************************************************************************
+ShellBand
+{
+	_band = 'day'
+	if ShellIsNight == 1 {
+		_band = 'night'
+	}
+	_band
+}
+
+//******************************************************************************
+//目標シェル名。手動ラッチが現在の時刻帯で有効な間はラッチ先を返し、
+// 境目を跨いだラッチはここで解除して時刻判定（'night'/'master'）に戻る
 //******************************************************************************
 ShellDesiredName
 {
 	_name = 'master'
 	if ShellIsNight == 1 {
 		_name = 'night'
+	}
+	if ISVAR('astaroth_shell_latch') {
+		if astaroth_shell_latch != '' {
+			_lband = ''
+			if ISVAR('astaroth_shell_latch_band') {
+				_lband = astaroth_shell_latch_band
+			}
+			_band = ShellBand
+			if _lband == _band {
+				_name = astaroth_shell_latch
+			}
+			else {
+				astaroth_shell_latch = ''
+				astaroth_shell_latch_band = ''
+			}
+		}
 	}
 	_name
 }
@@ -121,28 +162,30 @@ ShellSyncTag
 	if ISVAR('astaroth_shell_name') {
 		_cur = astaroth_shell_name
 	}
+	_norm = _cur
+	if _cur == 'Master' {
+		_norm = 'master'
+	}
 	_need = 0
-	if _desired == 'night' {
-		if _cur != 'night' {
+	if _norm == '' {
+		if _desired == 'night' {
+			_need = 1
+		}
+		elseif TOINT(_argv[0]) == 1 {
 			_need = 1
 		}
 	}
-	else {
-		if _cur == 'night' {
-			_need = 1
-		}
-		elseif _cur == '' && TOINT(_argv[0]) == 1 {
-			_need = 1
-		}
+	elseif _norm != _desired {
+		_need = 1
 	}
 	_tag = ''
 	if _need == 1 {
 		_tag = '\![change,shell,' + _desired + ']'
-		if _desired == 'night' {
-			astaroth_shell_name = 'night'
+		if _desired == 'master' {
+			astaroth_shell_name = 'Master'
 		}
 		else {
-			astaroth_shell_name = 'Master'
+			astaroth_shell_name = _desired
 		}
 	}
 	_tag
@@ -153,8 +196,9 @@ ShellSyncTag
 // Reference0:
 //   'time'  : Reference1=時／Reference2=分 でテスト用時刻を上書きする
 //   'clear' : 時刻上書きを解除する
-//   'state' : 目標シェル名と現在シェル名をバルーンで返す
+//   'state' : 目標シェル名・現在シェル名・ラッチをバルーンで返す
 //   'sync'  : ShellSyncTag(0) の結果（タグまたは空）をそのまま返す
+//   'latchclear' : 手動ラッチだけを解除する
 //******************************************************************************
 OnAstarothShellTest
 {
@@ -174,10 +218,25 @@ OnAstarothShellTest
 		if ISVAR('astaroth_shell_name') {
 			_cur = astaroth_shell_name
 		}
-		_result = '\0\s[0]【シェル同期の状態】目標: ' + ShellDesiredName + '／現在: ' + _cur + '\e'
+		_latch = 'なし'
+		if ISVAR('astaroth_shell_latch') {
+			if astaroth_shell_latch != '' {
+				_lb = ''
+				if ISVAR('astaroth_shell_latch_band') {
+					_lb = astaroth_shell_latch_band
+				}
+				_latch = astaroth_shell_latch + '(' + _lb + ')'
+			}
+		}
+		_result = '\0\s[0]【シェル同期の状態】目標: ' + ShellDesiredName + '／現在: ' + _cur + '／ラッチ: ' + _latch + '\e'
 	}
 	elseif reference[0] == 'sync' {
 		_result = ShellSyncTag(0)
+	}
+	elseif reference[0] == 'latchclear' {
+		astaroth_shell_latch = ''
+		astaroth_shell_latch_band = ''
+		_result = '\0\s[0]手動ラッチは解除したわ。時刻判定に戻る。\e'
 	}
 	_result
 }
