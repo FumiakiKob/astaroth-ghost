@@ -7,6 +7,17 @@
 // メイド）を追加し、手動切り替えにラッチ仕様を導入した（下記）。
 // あわせて看板を立てる経路（SignboardSet）にも同期タグを前置するよう
 // astaroth_signboard.dic 側を変更した（しまう経路だけだった v1 の欠け）。
+// v3 での変更（2026-11-08、nar v2.29）: 同期の自己回復を追加した。
+// 追跡変数 astaroth_shell_name はタグ発行時に先行して書き換えられる
+// ため、発行したタグが実シェルへ反映されないと、信念だけが目標と
+// 一致して実シェルとの乖離（ドリフト）が固定され、二度とタグが
+// 出なくなる（2026-11-08 朝、実シェル maid のまま追跡は Master と
+// 一致していた実例）。対策として、タグを発行した日付を
+// astaroth_shell_syncdate に記録し、日付が変わって最初の同期評価
+// では、追跡値が目標と一致していても切り替えタグを 1 回だけ出し
+// 直す（ShellSyncTag 内）。これで乖離は遅くとも翌日の最初の
+// 「現す場面」で自動的に解消される。同日・一致時は従来どおり
+// タグを出さない。
 //
 // 仕様（裏取り済み、UKADOC さくらスクリプト一覧／SHIORI Event 一覧）:
 //   ・シェルの切り替えは さくらスクリプト \![change,shell,シェル名]。
@@ -77,6 +88,17 @@ ShellNowMinute
 		}
 	}
 	_m
+}
+
+//******************************************************************************
+//今日の日付スタンプ（'YYYY/M/D'）。同期の自己回復（v3）で、タグを
+// 発行した日付の記録と比較に使う。GETTIME は [0]=年・[1]=月・[2]=日
+//（季節辞書と同じ取得法）。
+//******************************************************************************
+ShellTodayStamp
+{
+	_s = TOSTR(TOINT(GETTIME[0])) + '/' + TOSTR(TOINT(GETTIME[1])) + '/' + TOSTR(TOINT(GETTIME[2]))
+	_s
 }
 
 //******************************************************************************
@@ -154,6 +176,10 @@ OnShellChanged
 //同期タグ: 現在シェルが時刻の目標と違うときだけ、切り替えタグを返す。
 // 一致していれば空。呼び出し側は「現す場面」のスクリプト先頭に前置する。
 // _argv[0] : 1 のときは現在シェル名が未記録でも目標へ寄せる（起動時用）
+// 自己回復（v3）: タグを発行した日付（astaroth_shell_syncdate）が
+// 今日と違う場合、日付が変わって最初の評価では、追跡値が目標と
+// 一致していてもタグを 1 回出す。追跡変数の先行書き換えで実シェル
+// との乖離が固定されるのを防ぐため。タグを発行したら日付も記録する。
 //******************************************************************************
 ShellSyncTag
 {
@@ -178,6 +204,16 @@ ShellSyncTag
 	elseif _norm != _desired {
 		_need = 1
 	}
+	_today = ShellTodayStamp
+	_confirmed = ''
+	if ISVAR('astaroth_shell_syncdate') {
+		_confirmed = astaroth_shell_syncdate
+	}
+	if _need == 0 {
+		if _confirmed != _today {
+			_need = 1
+		}
+	}
 	_tag = ''
 	if _need == 1 {
 		_tag = '\![change,shell,' + _desired + ']'
@@ -187,6 +223,7 @@ ShellSyncTag
 		else {
 			astaroth_shell_name = _desired
 		}
+		astaroth_shell_syncdate = _today
 	}
 	_tag
 }
@@ -196,9 +233,12 @@ ShellSyncTag
 // Reference0:
 //   'time'  : Reference1=時／Reference2=分 でテスト用時刻を上書きする
 //   'clear' : 時刻上書きを解除する
-//   'state' : 目標シェル名・現在シェル名・ラッチをバルーンで返す
+//   'state' : 目標シェル名・現在シェル名・ラッチ・同期日をバルーンで返す
 //   'sync'  : ShellSyncTag(0) の結果（タグまたは空）をそのまま返す
+//   'syncforce' : ShellSyncTag(1) の結果（OnBoot と同じ経路）を返す
 //   'latchclear' : 手動ラッチだけを解除する
+//   'stampold' : 同期日スタンプを 2000/1/1 に戻す（日付替わりの再現用）
+//   'stampnow' : 同期日スタンプを今日に合わせる（当日分の再同期済み扱い）
 //******************************************************************************
 OnAstarothShellTest
 {
@@ -228,15 +268,31 @@ OnAstarothShellTest
 				_latch = astaroth_shell_latch + '(' + _lb + ')'
 			}
 		}
-		_result = '\0\s[0]【シェル同期の状態】目標: ' + ShellDesiredName + '／現在: ' + _cur + '／ラッチ: ' + _latch + '\e'
+		_stamp = '（未記録）'
+		if ISVAR('astaroth_shell_syncdate') {
+			_stamp = astaroth_shell_syncdate
+		}
+		_result = '\0\s[0]【シェル同期の状態】目標: ' + ShellDesiredName + '／現在: ' + _cur + '／ラッチ: ' + _latch + '／同期日: ' + _stamp + '（今日: ' + ShellTodayStamp + '）\e'
 	}
 	elseif reference[0] == 'sync' {
 		_result = ShellSyncTag(0)
+	}
+	elseif reference[0] == 'syncforce' {
+		_result = ShellSyncTag(1)
 	}
 	elseif reference[0] == 'latchclear' {
 		astaroth_shell_latch = ''
 		astaroth_shell_latch_band = ''
 		_result = '\0\s[0]手動ラッチは解除したわ。時刻判定に戻る。\e'
+	}
+	elseif reference[0] == 'stampold' {
+		astaroth_shell_syncdate = '2000/1/1'
+		_result = '\0\s[0]同期日スタンプを 2000/1/1 に戻したわ。次の同期評価で、日付替わりの再同期が走るはずよ。\e'
+	}
+	elseif reference[0] == 'stampnow' {
+		_today = ShellTodayStamp
+		astaroth_shell_syncdate = _today
+		_result = '\0\s[0]同期日スタンプを今日（' + _today + '）に合わせたわ。\e'
 	}
 	_result
 }
