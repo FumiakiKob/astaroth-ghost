@@ -605,3 +605,15 @@
 - **nar**：v2.28 として再ビルド（`zip -D`、286エントリ＝v2.27 と同一集合、testzip 正常、内容差分は辞書2ファイルのみ、57,110,873 bytes）。`astaroth.nar` 差し替え＋ `astaroth_v2.28_backup.nar` 保存。
 - **git**：辞書コミット 8335b49 を配信前に実施し、タグ v2.28 とともに push 済み（本追記の記録コミットを含む）。
 - **実機確認（今夜以降、ユーザー側）**：(1) 23:20 に入浴看板が自動でしまわれ、ネグリジェ姿で復帰トークが流れること。(2) 23:25 に就寝看板が立つこと。(3) 就寝看板中にダブルクリックで起こすと、夜用の台詞が出ること（朝の挨拶にならないこと）。
+
+## 追記33: 看板タイマーへの時刻ガード追加（2026-11-08 朝の入浴看板誤立ての恒久対策）
+
+2026-11-08 朝、入浴看板（26）が立ったまま残っていた事象への恒久対策。ユーザーは昨夜 20:00 ごろ早寝し PC はスリープしていた。ゴースト本体（辞書・シェル・nar）は無変更で、nar の再ビルドもなし。
+
+- **事象と診断**：今朝 07:48 のスリープ復帰時に、看板タイマー4件全てが発火した。journal では 07:48:24 に解除（Ref0=0）が2件（いずれも 204）、07:48:52 に就寝看板（29）と入浴看板（26）の立て替えが実行され、発火順が時系列順にならなかったため、最後に実行された入浴看板が最終状態として残った。OnCalendar タイマーはサスペンド中に予定時刻を過ぎると **Persistent=false でも復帰時に発火する**（bath.timer の実設定が Persistent=false だったことで確定）。欠けていた判定は「その看板を今立てる／しまうのが妥当な時刻か」というタイマー側の実行時チェック。辞書側のフック OnAstarothSignboard は右クリックメニューと共用で、手動操作を壊すため辞書側には入れず、対策はタイマー側に閉じた。
+- **対策**：共通ガードスクリプト `/home/muse/sstp_signboard_guard.py`（WSL）を新設し、4サービスの ExecStart を「ガード → 送信（~/sstp_signboard.py）」に変更した。ガードは現在時刻がウィンドウ内の場合だけ送信し、外れていれば送信せず正常終了して journal に `signboard-guard[<name>]: SKIP ...` の行を残す。ウィンドウは bath（26 を立てる）= 22:55〜23:10／bathclear（解除）= 23:15〜23:35／sleep（29 を立てる）= 23:20〜23:40／morning（解除）= 07:25〜10:00。送信した場合の終了コードは送信スクリプトのものをそのまま伝播する。テスト用に環境変数 `SIGNBOARD_GUARD_NOW`（時刻モック）と `SIGNBOARD_GUARD_DRYRUN`（送信せず判定のみ）を備える。
+- **変更範囲**：`/etc/systemd/system/astaroth-signboard-{bath,bathclear,sleep,morning}.service` の ExecStart のみで、daemon-reload 済み、systemctl show で反映を確認した。タイマー側は無変更（morning.timer の Persistent=true を維持、他3件も false のまま）。元のユニット一式（service／timer 各4件）は WSL の `/home/muse/backup/signboard-units-20261108/` にバックアップした。
+- **検証**：
+  - 判定テスト（時刻モック＋DRYRUN、全20件）：今朝の再現条件 07:48 では bath／sleep／bathclear が SKIP、morning が通過。通常時刻 23:00（bath）／23:20（bathclear）／23:25（sleep）／07:30（morning）は全て通過。境界はいずれも両端を含み、1分外れると SKIP になることを各ウィンドウで確認した。
+  - 実地テスト（08:22）：morning.service を手動起動し、ガード通過→解除 NOTIFY 送信→SSP 応答 204（看板は下りており無害）、Result=success を確認。続けて bath.service を起動し、SKIP 行が journal に残り、送信されず Result=success となることを確認した。
+  - 最終状態：SSTP の状態確認（OnAstarothShellTest の state と看板メニューの導入文）で「看板なし・目標 master／現在 Master・ラッチなし」を再確認した。タイマー4件は今夜 23:00／23:20／23:25 と明日 07:30 に正常待機中。
