@@ -670,3 +670,15 @@
 - **配信**：辞書コミット ed38dbd を配信前に実施し、タグ v2.31 とともに push 済み。変更4ファイル（bible 新規＋talk／menu／_loading_order）を WSL 配信フォルダへコピー（MD5 全件一致）、updates2.dau を 287 レコードで再生成し全レコード MD5 再計算で不一致0・未収録0。更新フックで起動し、配信サーバーログで SSP が 13:54 に照合表＋全4ファイルを 200 で取得したことを確認（テストは配信後の新辞書で実施）。
 - **nar**：v2.31 として再ビルド（`zip -D`、287エントリ＝v2.30 の286＋聖書辞書1、testzip 正常、エントリ差分は追加1件のみ、57,113,987 bytes）。`astaroth.nar` 差し替え＋ `astaroth_v2.31_backup.nar` 保存。
 - **実機確認（後日、ユーザー側）**：通常のランダムトークに、聖書・神学の話題（ヨブ記、Vanitas、位階など）が時々混ざること。季節のある日は季節ネタも従来どおり混ざること。
+
+## 追記37: フルフル時報音声のLarge化（2026-11-08、nar v2.32）
+
+Irodori-TTS の Large 統一の一環。フルフルの Speaker Inversion 埋め込みを v4-Large 用に再学習（16×1280、1500ステップ、最終 loss 0.705）し、ステップ刻みの試聴候補（750／1000／1250／final）をユーザーが試聴して **final（=1500）を採用**した。
+
+- **時報音声**：`furfur_hour_{00,06,08,11,12,15,18,23}.mp3` の8本を、fp版 Large 本体＋新埋め込み（akane_large_v1/checkpoint_final）で再合成。生成条件は seed 0 固定、MP3 エンコードは将来方針に合わせて VBR q6 に変更。台詞は従来と同一。WSL の生成スクリプト `~/voice_work/furfur_hourly/synth.sh` も Large 仕様へ切替済み（旧 Small 版は synth.sh.small.bak と backup_small_20261108/ に保全）。
+- **About 版数**：astaroth_menu.dic の OnAstarothAbout を 2.31 → 2.32 に（看板越し・通常の両分岐、最小変更＋冒頭の変更履歴コメント）。
+- **Gradio**：WSL の irodori-TTS 既定モデルも Aratako/Irodori-TTS-v4-Large へ切替済み（gradio_app.py のフォールバック既定を変更、再起動後に HTTP 200 を確認）。
+- **配信**：辞書コミット d5b79ba を配信前に実施し、タグ v2.32 とともに push 済み。変更9ファイル（MP3 8＋menu辞書）をビルドツリーと WSL 配信フォルダの両方へ反映し MD5 全件一致を確認。updates2.dau を 287 レコードで再生成し、全レコード MD5 再計算で不一致0・未収録0（updates2.dau 自身を除く）。更新フック（sstp_updaterequest.py）で起動し、配信サーバーログで SSP が 17:43 に照合表＋全9ファイルを 200 で取得したことを確認。
+- **nar**：v2.32 として再ビルド（`zip -D`、287エントリ＝v2.31 と同一集合、内容差分は9ファイルのみ、56,969,726 bytes）。`astaroth.nar` 差し替え＋ `astaroth_v2.32_backup.nar` 保存。zip 内の変更ファイル MD5 一致も確認済み。
+- **実機確認（後日、ユーザー側）**：次の正時（18時以降）の時報で、フルフルの声が Large 版になっていること。About の版数表示が 2.32 になっていること。
+- **残件**：v4.1-Small 本体（2.9GB）は用途が無くなったが削除は未決定（ユーザー判断待ち）。fp版 Large 重み（13GB）はフルフル本番用として保持する。
