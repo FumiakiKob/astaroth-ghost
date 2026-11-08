@@ -205,11 +205,13 @@ collision2,130,353,360,473,Bust
 }
 
 // surface49: 腕組み＋通常（穏やかな顔、478x1216）
+// v2.30 で体×顔合成により作り直し: 体は surface9 と完全同一のため
+// 当たり判定も surface9 の実測値をそのまま使う。
 surface49
 {
-collision0,130,78,315,258,Head
-collision1,150,160,295,252,Face
-collision2,115,357,370,477,Bust
+collision0,126,76,324,262,Head
+collision1,146,182,304,256,Face
+collision2,110,361,375,481,Bust
 }
 
 // surface56〜59: フルフル ポーズ差分の表情違い（基番＋40 の帯）。
