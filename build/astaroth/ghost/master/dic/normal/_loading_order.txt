@@ -1,3 +1,4 @@
+dic, astaroth_bible.dic, UTF-8
 dic, astaroth_bootend.dic, UTF-8
 dic, astaroth_hourly.dic, UTF-8
 dic, astaroth_install.dic, UTF-8
