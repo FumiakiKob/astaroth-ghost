@@ -682,3 +682,13 @@ Irodori-TTS の Large 統一の一環。フルフルの Speaker Inversion 埋め
 - **nar**：v2.32 として再ビルド（`zip -D`、287エントリ＝v2.31 と同一集合、内容差分は9ファイルのみ、56,969,726 bytes）。`astaroth.nar` 差し替え＋ `astaroth_v2.32_backup.nar` 保存。zip 内の変更ファイル MD5 一致も確認済み。
 - **実機確認（後日、ユーザー側）**：次の正時（18時以降）の時報で、フルフルの声が Large 版になっていること。About の版数表示が 2.32 になっていること。
 - **残件**：v4.1-Small 本体（2.9GB）は用途が無くなったが削除は未決定（ユーザー判断待ち）。fp版 Large 重み（13GB）はフルフル本番用として保持する。
+
+## 追記38: フルフル時報音声のint8量子化版への切替（2026-11-08、nar v2.33）
+
+- **発端**：v2.32 で fp版 Large に統一した後、ユーザーが「普段の生成は量子化モデルで軽くなるの？」と質問。VRAM は軽くなる（重み 13.2GB→3.8GB、say.py 実測ピーク約9.9GB）が速度は変わらず、類似度は僅かに落ちる旨を回答。フルフルの自己紹介文で fp／int8 の聞き比べを行い、ユーザーが「int8でいい、フルフル本番も切り替える」と採用。
+- **合成**：`~/voice_work/furfur_hourly/synth.sh` の CKPT を `quant_large/model.int8-weight-only.safetensors` へ切替（fp版スクリプトは synth.sh.fp-large.bak、fp版 MP3 は backup_fp_large_20261108/ に保全）。埋め込みは Large用 final のまま、seed 0・VBR q6 も不変。8本とも再合成し、MD5 が fp版一式と全て異なることを確認。
+- **Gradio**：既定チェックポイントも int8 ローカルパスへ切替（gradio_app.py の `_default_checkpoint` を変更、注記文も追随、バックアップ gradio_app.py.bak-int8-20261108）。再起動後 HTTP 200。これで Irodori の常駐系は全て int8 Large に統一。
+- **配信**：内容コミット 41ab1e1＋タグ v2.33 を push。変更9ファイル（MP3 8＋menu辞書の版数 2.33）をビルドツリーと WSL 配信フォルダの両方へ反映し MD5 全件一致。updates2.dau 287 レコード再生成、全件 MD5 再計算で不一致0・未収録0。sstp_updaterequest.py で起動し、配信サーバーログで SSP が 20:26 に照合表＋全9ファイルを 200 で取得したことを確認。
+- **nar**：v2.33 として再ビルド（287エントリ、56,970,960 bytes）。`astaroth.nar` 差し替え＋ `astaroth_v2.33_backup.nar` 保存。
+- **実機確認（後日、ユーザー側）**：次の正時の時報が int8 版の声であること、About の版数が 2.33 であること。
+- **残件の更新**：v4.1-Small（2.9GB）はユーザーの承認で削除済み（WSL 空き 90G）。fp版 Large 重み（13GB）は量子化の源泉・Speaker Inversion 学習用・予備として保持を継続。
